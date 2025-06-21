@@ -1,0 +1,25 @@
+# Core dependencies
+tkinter  # Usually comes with Python
+pandas>=1.5.0
+numpy>=1.24.0
+matplotlib>=3.6.0
+yfinance>=0.2.18
+
+# Additional data sources
+requests>=2.28.0
+beautifulsoup4>=4.11.0
+
+# Utilities
+python-dotenv>=0.21.0
+cachetools>=5.3.0
+
+# Development dependencies
+pytest>=7.2.0
+pytest-asyncio>=0.20.0
+black>=22.10.0
+pylint>=2.15.0
+
+# Optional advanced features
+plotly>=5.11.0  # For interactive charts
+openpyxl>=3.0.0  # For Excel export
+reportlab>=3.6.0  # For PDF reports
