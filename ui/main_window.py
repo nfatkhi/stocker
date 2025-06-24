@@ -1,4 +1,5 @@
-# ui/main_window.py - Updated with Financials Tab
+# ui/main_window.py - Fixed tab enabling issue
+
 import tkinter as tk
 from tkinter import ttk
 from core.event_system import EventBus, Event, EventType
@@ -6,7 +7,7 @@ from ui.widgets import (
     TickerInput, StatusBar, TabManager, 
     LoadingSpinner, MetricCard, StockChart
 )
-from components.financials_manager import FinancialsManager  # NEW IMPORT
+from components.financials_manager import FinancialsManager
 
 class MainWindow:
     """Main application window using custom widgets"""
@@ -52,9 +53,6 @@ class MainWindow:
             self.root,
             text="Fetching stock data..."
         )
-        
-        # Note: FinancialsManager will be created in _setup_financials_tab()
-        # when the tab frame is available
     
     def _setup_layout(self):
         """Arrange widgets in window"""
@@ -67,8 +65,6 @@ class MainWindow:
         
         # Status bar at bottom
         self.status_bar.pack(fill='x', side='bottom')
-        
-        # Loading spinner is not packed initially (hidden)
     
     def _populate_tabs(self):
         """Add content to each tab"""
@@ -78,8 +74,11 @@ class MainWindow:
         # Charts Tab - Add stock chart
         self._setup_charts_tab()
         
-        # Financials Tab - Add financial analysis (NEW)
+        # Financials Tab - Add financial analysis
         self._setup_financials_tab()
+        
+        # ENSURE ALL TABS ARE ENABLED INITIALLY
+        self._enable_all_tabs()
     
     def _setup_overview_tab(self):
         """Setup overview tab with metric cards"""
@@ -146,10 +145,10 @@ class MainWindow:
         self.stock_chart.pack(fill='both', expand=True, padx=20, pady=20)
     
     def _setup_financials_tab(self):
-        """Setup financials tab with financial analysis - CLEAN VERSION"""
+        """Setup financials tab with financial analysis"""
         financials_frame = self.tab_manager.get_tab_frame('Financials')
         
-        # CLEAR ANY EXISTING PLACEHOLDER CONTENT
+        # Clear any existing content
         for widget in financials_frame.winfo_children():
             widget.destroy()
         
@@ -167,27 +166,41 @@ class MainWindow:
             'accent': '#8a8a8a'
         }
         
-        # Create FinancialsManager with the financials tab frame as parent
+        # Create FinancialsManager
         self.financials_manager = FinancialsManager(
             parent=financials_frame,
             theme_colors=theme_colors,
             event_bus=self.event_bus
         )
-        
-    # NO .pack() NEEDED - FinancialsManager creates content directly in parent
+    
+    def _enable_all_tabs(self):
+        """Ensure all tabs are enabled and clickable"""
+        try:
+            num_tabs = self.tab_manager.index("end")
+            for i in range(num_tabs):
+                self.tab_manager.tab(i, state='normal')
+            print(f"✅ All {num_tabs} tabs enabled")
+        except Exception as e:
+            print(f"⚠️ Error enabling tabs: {e}")
+    
     def _subscribe_to_events(self):
         """Subscribe to relevant events"""
+        # FIXED: Subscribe to multiple completion events
+        completion_events = [
+            EventType.DATA_FETCH_COMPLETED,
+            EventType.DATA_RECEIVED,  # Also listen for this
+            EventType.ANALYSIS_COMPLETED
+        ]
+        
         # Show spinner when fetching starts
         self.event_bus.subscribe(
             EventType.DATA_FETCH_STARTED,
             self._show_loading
         )
         
-        # Hide spinner when fetching completes
-        self.event_bus.subscribe(
-            EventType.DATA_FETCH_COMPLETED,
-            self._hide_loading
-        )
+        # Hide spinner and enable tabs when any completion event occurs
+        for event_type in completion_events:
+            self.event_bus.subscribe(event_type, self._hide_loading)
         
         # Update UI when analysis completes
         self.event_bus.subscribe(
@@ -196,18 +209,29 @@ class MainWindow:
         )
     
     def _show_loading(self, event):
-        """Show loading state by disabling individual tabs"""
-        for i in range(len(self.tab_manager.tabs())):
-            self.tab_manager.tab(i, state='disabled')
+        """Show loading state - IMPROVED VERSION"""
+        print("🔄 Loading started - disabling tabs temporarily")
+        try:
+            num_tabs = self.tab_manager.index("end")
+            for i in range(num_tabs):
+                self.tab_manager.tab(i, state='disabled')
+        except Exception as e:
+            print(f"⚠️ Error disabling tabs: {e}")
     
     def _hide_loading(self, event):
-        """Hide loading state by enabling individual tabs"""
-        for i in range(len(self.tab_manager.tabs())):
-            self.tab_manager.tab(i, state='normal')
-            
+        """Hide loading state - IMPROVED VERSION"""
+        print("✅ Loading completed - re-enabling all tabs")
+        self._enable_all_tabs()
+        
+        # FORCE UI UPDATE
+        self.root.after_idle(self._enable_all_tabs)
+    
     def _update_ui(self, event):
         """Update UI with analysis results"""
         data = event.data
+        
+        # ENSURE TABS ARE ENABLED AFTER UI UPDATE
+        self._enable_all_tabs()
         
         # Update metric cards
         if 'metrics' in data:
@@ -253,3 +277,19 @@ class MainWindow:
         
         # Schedule a delayed refresh for the current tab
         self.tab_manager.after(100, self.tab_manager._refresh_current_tab)
+    
+    # DEBUG METHOD - ADD THIS TEMPORARILY
+    def debug_tab_states(self):
+        """Debug method to check tab states"""
+        try:
+            num_tabs = self.tab_manager.index("end")
+            states = []
+            for i in range(num_tabs):
+                state = self.tab_manager.tab(i, "state")
+                text = self.tab_manager.tab(i, "text")
+                states.append(f"{text}: {state}")
+            print(f"🔍 Tab states: {states}")
+            return states
+        except Exception as e:
+            print(f"❌ Error checking tab states: {e}")
+            return []

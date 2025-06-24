@@ -1,13 +1,20 @@
-# components/financials_manager.py - Fixed imports for existing project structure
+# components/financials_manager.py - UPDATED: Separated Data Routing Architecture
 
 import tkinter as tk
 from tkinter import ttk
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from typing import List, Optional, Dict, Tuple
-from datetime import datetime
+from typing import List, Optional, Dict, Any
 
 from core.event_system import EventBus, Event, EventType
+
+# Import chart components with relative imports
+try:
+    from .charts.revenue_chart import RevenueTab
+    from .charts.cashflow_chart import CashFlowTab
+    CHARTS_AVAILABLE = True
+except ImportError:
+    # Fallback if charts not available
+    CHARTS_AVAILABLE = False
+    print("⚠️ Chart components not available, using fallback mode")
 
 # Try to import models from different possible locations
 try:
@@ -47,9 +54,11 @@ except ImportError:
 
 class FinancialsManager:
     """
-    Basic Financial Analysis Manager that integrates with existing Stocker architecture
+    SEPARATED DATA ROUTING: Financial Analysis Manager
     
-    Displays quarterly financial data in a simple, clean interface
+    Routes FCF data (Polygon.io) to cashflow_chart
+    Routes Revenue data (SEC EDGAR) to revenue_chart
+    Fetches data when tabs are activated
     """
     
     def __init__(self, parent=None, event_bus=None, **kwargs):
@@ -61,8 +70,15 @@ class FinancialsManager:
         if not self.parent_frame or not self.event_bus:
             raise ValueError("FinancialsManager requires both parent and event_bus arguments")
         
+        # Current state
         self.current_ticker = ""
-        self.current_financials = []
+        self.current_fcf_data = []      # FCF data from Polygon.io
+        self.current_revenue_data = []  # Revenue data from SEC EDGAR
+        self.data_source_info = {}      # Information about data sources
+        
+        # Data availability flags
+        self.fcf_data_available = False
+        self.revenue_data_available = False
         
         # Color scheme for consistency
         self.colors = {
@@ -76,278 +92,570 @@ class FinancialsManager:
             'error': '#F44336'
         }
         
+        # Initialize tab components
+        self.revenue_tab = None
+        self.cashflow_tab = None
+        self.notebook = None
+        self.tab_data_loaded = {'revenue': False, 'cashflow': False}
+        
         # Subscribe to events
         self.event_bus.subscribe(EventType.DATA_RECEIVED, self.on_data_received)
+        self.event_bus.subscribe(EventType.TAB_CHANGED, self.on_tab_changed)
         
         # Setup UI
         self._setup_ui()
         
-        print("📊 Financials Manager initialized")
+        if CHARTS_AVAILABLE:
+            print("📊 SEPARATED DATA ROUTING: Financials Manager initialized")
+            print("   💰 FCF data -> cashflow_chart (Polygon.io)")
+            print("   📈 Revenue data -> revenue_chart (SEC EDGAR)")
+            print("   🔄 Lazy loading: Data fetched when tabs activated")
+        else:
+            print("📊 Basic Financials Manager initialized - chart components not available")
     
     def _setup_ui(self):
-        """Setup the financial analysis UI"""
+        """Setup the financial analysis UI with tabbed interface"""
         # Clear existing content
         for widget in self.parent_frame.winfo_children():
             widget.destroy()
+        
+        if not CHARTS_AVAILABLE:
+            self._setup_fallback_ui()
+            return
         
         # Main container
         main_frame = tk.Frame(self.parent_frame, bg=self.colors['bg'])
         main_frame.pack(fill='both', expand=True, padx=5, pady=5)
         
-        # Header
+        # Header with data source information
+        header_frame = tk.Frame(main_frame, bg=self.colors['bg'])
+        header_frame.pack(fill='x', pady=(0, 10))
+        
         header_label = tk.Label(
-            main_frame,
-            text="📊 Financial Analysis",
+            header_frame,
+            text="📊 Financial Analysis - Separated Data Sources",
             font=(UI_CONFIG['font_family'], 16, 'bold'),
             bg=self.colors['bg'],
             fg=self.colors['header']
         )
-        header_label.pack(pady=(0, 20))
+        header_label.pack(side='left')
         
-        # Content area
-        self.content_frame = tk.Frame(main_frame, bg=self.colors['bg'])
-        self.content_frame.pack(fill='both', expand=True)
-        
-        # Initially show placeholder
-        self._show_placeholder()
-    
-    def _show_placeholder(self):
-        """Show placeholder when no data is loaded"""
-        for widget in self.content_frame.winfo_children():
-            widget.destroy()
-        
-        placeholder = tk.Label(
-            self.content_frame,
-            text="📊 Select a stock to view financial analysis\n\nEnhanced with SEC EDGAR data integration",
-            font=(UI_CONFIG['font_family'], 14),
+        # Data source indicator
+        self.data_source_label = tk.Label(
+            header_frame,
+            text="💰 FCF: Polygon.io | 📈 Revenue: SEC EDGAR",
+            font=(UI_CONFIG['font_family'], 10),
             bg=self.colors['bg'],
-            fg=self.colors['text'],
-            justify='center'
+            fg=self.colors['accent']
         )
-        placeholder.pack(expand=True)
+        self.data_source_label.pack(side='right')
+        
+        # Create notebook for tabs
+        self.notebook = ttk.Notebook(main_frame)
+        self.notebook.pack(fill='both', expand=True)
+        
+        # Bind tab change event
+        self.notebook.bind('<<NotebookTabChanged>>', self._on_notebook_tab_changed)
+        
+        # Create tab frames
+        self.revenue_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
+        self.cashflow_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
+        
+        # Add tabs to notebook with enhanced labels
+        self.notebook.add(self.revenue_frame, text='📈 Revenue (SEC EDGAR)')
+        self.notebook.add(self.cashflow_frame, text='💰 Free Cash Flow (Polygon.io)')
+        
+        # Initialize tab components
+        self.revenue_tab = RevenueTab(self.revenue_frame)
+        self.cashflow_tab = CashFlowTab(self.cashflow_frame)
+        
+        # Show initial placeholders
+        self.revenue_tab.show_placeholder()
+        self.cashflow_tab.show_placeholder()
     
-    def on_data_received(self, event):
-        """Handle new financial data received"""
-        stock_data = event.data['stock_data']
-        data_source = event.data.get('data_source', 'Unknown')
-        
-        self.current_ticker = stock_data.ticker
-        self.current_financials = stock_data.quarterly_financials
-        
-        print(f"📊 Financials Manager: Data received for {self.current_ticker} from {data_source}")
-        
-        if self.current_financials:
-            self._update_financial_display()
-        else:
-            self._show_no_data_message()
-    
-    def _update_financial_display(self):
-        """Update the financial display with new data"""
-        # Clear existing content
-        for widget in self.content_frame.winfo_children():
-            widget.destroy()
-        
-        try:
-            # Create header with ticker and data source info
-            header_frame = tk.Frame(self.content_frame, bg=self.colors['bg'])
-            header_frame.pack(fill='x', pady=(0, 20))
-            
-            title_label = tk.Label(
-                header_frame,
-                text=f"{self.current_ticker} - Financial Overview",
-                font=(UI_CONFIG['font_family'], 16, 'bold'),
-                bg=self.colors['bg'],
-                fg=self.colors['header']
-            )
-            title_label.pack(side='left')
-            
-            # Create financial summary
-            self._create_financial_summary()
-            
-            # Create revenue chart
-            self._create_revenue_chart()
-            
-        except Exception as e:
-            print(f"❌ Error updating financial display: {e}")
-            self._show_error_message(str(e))
-    
-    def _create_financial_summary(self):
-        """Create financial summary cards"""
-        if not self.current_financials:
-            return
-        
-        summary_frame = tk.Frame(self.content_frame, bg=self.colors['bg'])
-        summary_frame.pack(fill='x', pady=(0, 20))
-        
-        # Calculate summary metrics
-        revenues = [f.revenue for f in self.current_financials if f.revenue > 0]
-        net_incomes = [f.net_income for f in self.current_financials if f.net_income != 0]
-        
-        if revenues:
-            latest_revenue = revenues[0]
-            avg_revenue = sum(revenues) / len(revenues)
-            
-            # Create metric cards
-            metrics = [
-                ("Quarters Available", f"{len(self.current_financials)}", self.colors['accent']),
-                ("Latest Revenue", f"${latest_revenue/1e9:.2f}B", self.colors['success']),
-                ("Average Revenue", f"${avg_revenue/1e9:.2f}B", self.colors['accent']),
-                ("Revenue Range", f"${min(revenues)/1e9:.1f}B - ${max(revenues)/1e9:.1f}B", self.colors['text'])
-            ]
-            
-            for i, (label, value, color) in enumerate(metrics):
-                card_frame = tk.Frame(summary_frame, bg=self.colors['frame'], relief='raised', bd=1)
-                card_frame.pack(side='left', fill='both', expand=True, padx=5)
-                
-                tk.Label(
-                    card_frame,
-                    text=label,
-                    font=(UI_CONFIG['font_family'], 10),
-                    bg=self.colors['frame'],
-                    fg=self.colors['text']
-                ).pack(pady=(10, 5))
-                
-                tk.Label(
-                    card_frame,
-                    text=value,
-                    font=(UI_CONFIG['font_family'], 12, 'bold'),
-                    bg=self.colors['frame'],
-                    fg=color
-                ).pack(pady=(0, 10))
-    
-    def _create_revenue_chart(self):
-        """Create a simple revenue chart"""
-        if not self.current_financials:
-            return
-        
-        chart_frame = tk.Frame(self.content_frame, bg=self.colors['frame'], relief='sunken', bd=2)
-        chart_frame.pack(fill='both', expand=True, pady=(10, 0))
-        
-        try:
-            # Prepare data
-            revenues = []
-            quarters = []
-            
-            for financial in reversed(self.current_financials[-8:]):  # Last 8 quarters
-                if financial.revenue > 0:
-                    revenues.append(financial.revenue / 1e9)  # Convert to billions
-                    quarters.append(self._get_quarter_label(financial.date))
-            
-            if not revenues:
-                tk.Label(
-                    chart_frame,
-                    text="No revenue data available for chart",
-                    bg=self.colors['frame'],
-                    fg=self.colors['warning'],
-                    font=(UI_CONFIG['font_family'], 12)
-                ).pack(expand=True)
-                return
-            
-            # Create matplotlib figure
-            fig = Figure(figsize=(10, 6), facecolor=self.colors['frame'])
-            ax = fig.add_subplot(111, facecolor=self.colors['frame'])
-            
-            # Create bar chart
-            bars = ax.bar(range(len(quarters)), revenues, color=self.colors['accent'], alpha=0.8)
-            
-            # Customize chart
-            ax.set_xlabel('Quarter', color=self.colors['text'], fontweight='bold')
-            ax.set_ylabel('Revenue (Billions $)', color=self.colors['text'], fontweight='bold')
-            ax.set_title(f'{self.current_ticker} Quarterly Revenue', 
-                        color=self.colors['header'], fontweight='bold')
-            
-            # Set labels
-            ax.set_xticks(range(len(quarters)))
-            ax.set_xticklabels(quarters, rotation=45, ha='right', color=self.colors['text'])
-            ax.tick_params(colors=self.colors['text'])
-            
-            # Add value labels on bars
-            for bar, value in zip(bars, revenues):
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height + max(revenues) * 0.01,
-                       f'${value:.2f}B', ha='center', va='bottom', color=self.colors['text'])
-            
-            # Style the chart
-            ax.spines['bottom'].set_color(self.colors['text'])
-            ax.spines['left'].set_color(self.colors['text'])
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.grid(True, alpha=0.3, color=self.colors['text'])
-            
-            # Create canvas
-            canvas = FigureCanvasTkAgg(fig, chart_frame)
-            canvas.draw()
-            canvas.get_tk_widget().pack(fill='both', expand=True, padx=10, pady=10)
-            
-            print(f"📊 Revenue chart created with {len(revenues)} quarters")
-            
-        except Exception as e:
-            print(f"❌ Error creating revenue chart: {e}")
-            tk.Label(chart_frame, text=f"Error creating chart: {str(e)}", 
-                    bg=self.colors['frame'], fg=self.colors['error']).pack(expand=True)
-    
-    def _get_quarter_label(self, date_str: str) -> str:
-        """Convert date string to quarter label"""
-        try:
-            if ' ' in date_str:
-                date_part = date_str.split(' ')[0]
-            else:
-                date_part = date_str
-            
-            date_obj = datetime.strptime(date_part, '%Y-%m-%d')
-            year = date_obj.year
-            quarter = (date_obj.month - 1) // 3 + 1
-            return f"{year}Q{quarter}"
-        except:
-            return date_str[:7]  # Fallback to YYYY-MM
-    
-    def _show_no_data_message(self):
-        """Show message when no financial data is available"""
-        for widget in self.content_frame.winfo_children():
-            widget.destroy()
-        
-        no_data_label = tk.Label(
-            self.content_frame,
-            text=f"📊 No financial data available for {self.current_ticker}\n\nThis may be a new stock or not publicly traded",
+    def _setup_fallback_ui(self):
+        """Setup fallback UI when chart components are not available"""
+        tk.Label(
+            self.parent_frame,
+            text="📊 Financial Analysis\n\n⚠️ Chart components not available\nPlease ensure components/charts/ directory exists with required files:\n\n• base_chart.py\n• revenue_chart.py\n• cashflow_chart.py\n• __init__.py",
             font=(UI_CONFIG['font_family'], 12),
             bg=self.colors['bg'],
             fg=self.colors['warning'],
             justify='center'
-        )
-        no_data_label.pack(expand=True)
+        ).pack(expand=True)
     
-    def _show_error_message(self, error_message: str):
-        """Show error message"""
-        for widget in self.content_frame.winfo_children():
-            widget.destroy()
+    def on_data_received(self, event):
+        """Handle separated data received from data fetcher"""
+        data = event.data
+        stock_data = data.get('stock_data')
         
-        error_label = tk.Label(
-            self.content_frame,
-            text=f"❌ Error displaying financial data\n\n{error_message}",
-            font=(UI_CONFIG['font_family'], 12),
-            bg=self.colors['bg'],
-            fg=self.colors['error'],
-            justify='center'
-        )
-        error_label.pack(expand=True)
+        if not stock_data:
+            print("❌ No stock data received")
+            return
+        
+        # Extract separated data
+        self.current_ticker = stock_data.ticker
+        approach = data.get('approach', 'unknown')
+        
+        print(f"\n🔄 SEPARATED DATA ROUTING for {self.current_ticker}")
+        print("=" * 60)
+        
+        if approach == 'separated':
+            # ========================================
+            # SEPARATED DATA APPROACH - NEW ROUTING
+            # ========================================
+            
+            # Extract separated datasets
+            self.current_fcf_data = data.get('fcf_data', [])
+            self.current_revenue_data = data.get('revenue_data', [])
+            self.data_source_info = {
+                'fcf_source': data.get('fcf_source', 'Unknown'),
+                'revenue_source': data.get('revenue_source', 'Unknown'),
+                'fcf_quarters': data.get('fcf_quarters', 0),
+                'revenue_quarters': data.get('revenue_quarters', 0),
+                'approach': approach
+            }
+            
+            # Update availability flags
+            self.fcf_data_available = len(self.current_fcf_data) > 0
+            self.revenue_data_available = len(self.current_revenue_data) > 0
+            
+            print(f"📊 Separated data received:")
+            print(f"   💰 FCF data: {len(self.current_fcf_data)} quarters ({self.data_source_info['fcf_source']})")
+            print(f"   📈 Revenue data: {len(self.current_revenue_data)} quarters ({self.data_source_info['revenue_source']})")
+            print(f"   ✅ FCF available: {self.fcf_data_available}")
+            print(f"   ✅ Revenue available: {self.revenue_data_available}")
+            
+            # Check for recent data
+            if self.current_fcf_data:
+                recent_fcf = [q for q in self.current_fcf_data if q.date.startswith('2024') or q.date.startswith('2025')]
+                if recent_fcf:
+                    print(f"   🎉 Recent FCF data: {len(recent_fcf)} quarters (2024-2025)!")
+            
+            # Reset tab loading states
+            self.tab_data_loaded = {'revenue': False, 'cashflow': False}
+            
+            # Update data source indicator
+            if CHARTS_AVAILABLE and hasattr(self, 'data_source_label'):
+                fcf_status = "✅" if self.fcf_data_available else "❌"
+                revenue_status = "✅" if self.revenue_data_available else "❌"
+                
+                self.data_source_label.config(
+                    text=f"💰 FCF: {fcf_status} Polygon.io | 📈 Revenue: {revenue_status} SEC EDGAR",
+                    fg=self.colors['success'] if (self.fcf_data_available and self.revenue_data_available) else self.colors['warning']
+                )
+            
+            # Load data for currently active tab
+            self._load_current_tab_data()
+            
+        else:
+            # ========================================
+            # FALLBACK TO COMBINED APPROACH
+            # ========================================
+            
+            print(f"⚠️ Using fallback combined approach for {self.current_ticker}")
+            
+            quarterly_financials = stock_data.quarterly_financials
+            
+            # Try to separate the combined data based on content
+            self.current_fcf_data = [q for q in quarterly_financials if q.cash != 0]
+            self.current_revenue_data = [q for q in quarterly_financials if q.revenue > 0]
+            
+            self.fcf_data_available = len(self.current_fcf_data) > 0
+            self.revenue_data_available = len(self.current_revenue_data) > 0
+            
+            self.data_source_info = {
+                'fcf_source': 'Combined',
+                'revenue_source': 'Combined', 
+                'fcf_quarters': len(self.current_fcf_data),
+                'revenue_quarters': len(self.current_revenue_data),
+                'approach': 'combined_fallback'
+            }
+            
+            # Reset tab loading states
+            self.tab_data_loaded = {'revenue': False, 'cashflow': False}
+            
+            # Load data for currently active tab
+            self._load_current_tab_data()
+    
+    def _on_notebook_tab_changed(self, event):
+        """Handle notebook tab change event"""
+        if not CHARTS_AVAILABLE:
+            return
+        
+        # Get current tab info
+        try:
+            current_tab_index = self.notebook.index(self.notebook.select())
+            tab_name = self._get_tab_name_from_index(current_tab_index)
+            
+            print(f"🔄 Tab changed to: {tab_name} (index: {current_tab_index})")
+            
+            # Publish tab change event
+            self.event_bus.publish(Event(
+                type=EventType.TAB_CHANGED,
+                data={
+                    'tab_name': tab_name,
+                    'tab_index': current_tab_index,
+                    'ticker': self.current_ticker,
+                    'separated_data_available': {
+                        'fcf': self.fcf_data_available,
+                        'revenue': self.revenue_data_available
+                    }
+                }
+            ))
+            
+            # Load data for the new tab if not already loaded
+            self._load_current_tab_data()
+            
+        except tk.TclError:
+            # Handle case where notebook might not be ready
+            print("⚠️ Tab change event handling: Notebook not ready")
+    
+    def on_tab_changed(self, event):
+        """Handle tab changed event (from external sources)"""
+        # This can be used by other components to trigger tab changes
+        tab_name = event.data.get('tab_name', '')
+        print(f"📊 External tab change request: {tab_name}")
+        self._load_current_tab_data()
+    
+    def _get_tab_name_from_index(self, index: int) -> str:
+        """Get tab name from index"""
+        tab_names = ['revenue', 'cashflow']
+        return tab_names[index] if index < len(tab_names) else 'unknown'
+    
+    def _load_current_tab_data(self):
+        """Load data for currently active tab - LAZY LOADING"""
+        if not CHARTS_AVAILABLE or not self.current_ticker:
+            return
+        
+        try:
+            current_tab_index = self.notebook.index(self.notebook.select())
+            tab_name = self._get_tab_name_from_index(current_tab_index)
+            
+            print(f"🔄 Loading data for {tab_name} tab...")
+            
+            if tab_name == 'revenue' and not self.tab_data_loaded['revenue']:
+                self._load_revenue_tab_data()
+                
+            elif tab_name == 'cashflow' and not self.tab_data_loaded['cashflow']:
+                self._load_cashflow_tab_data()
+                
+        except tk.TclError:
+            # Handle case where notebook might not be ready
+            print("⚠️ Notebook not ready for tab loading")
+    
+    def _load_revenue_tab_data(self):
+        """Load revenue-specific data into revenue tab"""
+        print(f"\n📈 LOADING REVENUE TAB DATA")
+        print("-" * 40)
+        
+        if not self.revenue_data_available:
+            print(f"❌ No revenue data available from {self.data_source_info.get('revenue_source', 'Unknown')}")
+            self._show_revenue_no_data()
+            return
+        
+        try:
+            print(f"✅ Loading {len(self.current_revenue_data)} quarters of revenue data")
+            print(f"📊 Source: {self.data_source_info.get('revenue_source', 'Unknown')}")
+            
+            # Update revenue tab with revenue-specific data
+            self.revenue_tab.update_data(
+                self.current_revenue_data, 
+                self.current_ticker,
+                {
+                    **self.data_source_info,
+                    'data_type': 'revenue_only',
+                    'primary_source': self.data_source_info.get('revenue_source', 'Unknown')
+                }
+            )
+            
+            self.tab_data_loaded['revenue'] = True
+            print(f"✅ Revenue tab loaded successfully")
+            
+        except Exception as e:
+            print(f"❌ Error loading revenue tab: {e}")
+            import traceback
+            traceback.print_exc()
+            self._show_revenue_error(str(e))
+    
+    def _load_cashflow_tab_data(self):
+        """Load FCF-specific data into cashflow tab"""
+        print(f"\n💰 LOADING CASHFLOW TAB DATA")
+        print("-" * 40)
+        
+        if not self.fcf_data_available:
+            print(f"❌ No FCF data available from {self.data_source_info.get('fcf_source', 'Unknown')}")
+            self._show_cashflow_no_data()
+            return
+        
+        try:
+            print(f"✅ Loading {len(self.current_fcf_data)} quarters of FCF data")
+            print(f"📊 Source: {self.data_source_info.get('fcf_source', 'Unknown')}")
+            
+            # Check for recent FCF data
+            recent_fcf = [q for q in self.current_fcf_data if q.date.startswith('2024') or q.date.startswith('2025')]
+            if recent_fcf:
+                print(f"🎉 Including {len(recent_fcf)} recent quarters (2024-2025)")
+                for q in recent_fcf:
+                    fcf_b = q.cash / 1e9
+                    print(f"   📈 {q.date}: ${fcf_b:.2f}B")
+            
+            # Update cashflow tab with FCF-specific data
+            self.cashflow_tab.update_data(
+                self.current_fcf_data,
+                self.current_ticker,
+                {
+                    **self.data_source_info,
+                    'data_type': 'fcf_only',
+                    'primary_source': self.data_source_info.get('fcf_source', 'Unknown')
+                }
+            )
+            
+            self.tab_data_loaded['cashflow'] = True
+            print(f"✅ Cashflow tab loaded successfully")
+            
+        except Exception as e:
+            print(f"❌ Error loading cashflow tab: {e}")
+            import traceback
+            traceback.print_exc()
+            self._show_cashflow_error(str(e))
+    
+    def _show_revenue_no_data(self):
+        """Show no data message for revenue tab"""
+        if self.revenue_tab:
+            # Clear existing content
+            for widget in self.revenue_frame.winfo_children():
+                widget.destroy()
+            
+            tk.Label(
+                self.revenue_frame,
+                text=f"📈 No Revenue Data Available\n\n" +
+                     f"Source: {self.data_source_info.get('revenue_source', 'SEC EDGAR')}\n\n" +
+                     f"Ticker: {self.current_ticker}\n" +
+                     f"• Check ticker symbol\n" +
+                     f"• Company may not report revenue in standard format\n" +
+                     f"• SEC EDGAR may not have recent filings",
+                font=(UI_CONFIG['font_family'], 12),
+                bg=self.colors['bg'],
+                fg=self.colors['warning'],
+                justify='center'
+            ).pack(expand=True)
+    
+    def _show_cashflow_no_data(self):
+        """Show no data message for cashflow tab"""
+        if self.cashflow_tab:
+            # Clear existing content
+            for widget in self.cashflow_frame.winfo_children():
+                widget.destroy()
+            
+            tk.Label(
+                self.cashflow_frame,
+                text=f"💰 No Free Cash Flow Data Available\n\n" +
+                     f"Source: {self.data_source_info.get('fcf_source', 'Polygon.io')}\n\n" +
+                     f"Ticker: {self.current_ticker}\n" +
+                     f"• Check ticker symbol\n" +
+                     f"• Polygon.io API may be unavailable\n" +
+                     f"• Company may not report cash flow data\n" +
+                     f"• API key may be invalid",
+                font=(UI_CONFIG['font_family'], 12),
+                bg=self.colors['bg'],
+                fg=self.colors['warning'],
+                justify='center'
+            ).pack(expand=True)
+    
+    def _show_revenue_error(self, error_message: str):
+        """Show error message for revenue tab"""
+        if self.revenue_tab:
+            for widget in self.revenue_frame.winfo_children():
+                widget.destroy()
+            
+            tk.Label(
+                self.revenue_frame,
+                text=f"❌ Revenue Data Error\n\n{error_message}",
+                font=(UI_CONFIG['font_family'], 12),
+                bg=self.colors['bg'],
+                fg=self.colors['error'],
+                justify='center'
+            ).pack(expand=True)
+    
+    def _show_cashflow_error(self, error_message: str):
+        """Show error message for cashflow tab"""
+        if self.cashflow_tab:
+            for widget in self.cashflow_frame.winfo_children():
+                widget.destroy()
+            
+            tk.Label(
+                self.cashflow_frame,
+                text=f"❌ FCF Data Error\n\n{error_message}",
+                font=(UI_CONFIG['font_family'], 12),
+                bg=self.colors['bg'],
+                fg=self.colors['error'],
+                justify='center'
+            ).pack(expand=True)
+    
+    def force_reload_current_tab(self):
+        """Force reload current tab data"""
+        if not CHARTS_AVAILABLE:
+            return
+        
+        current_tab_index = self.notebook.index(self.notebook.select())
+        tab_name = self._get_tab_name_from_index(current_tab_index)
+        
+        print(f"🔄 Force reloading {tab_name} tab...")
+        
+        # Reset loading state
+        self.tab_data_loaded[tab_name] = False
+        
+        # Reload data
+        self._load_current_tab_data()
+    
+    def get_data_status(self) -> Dict[str, Any]:
+        """Get current data status for debugging"""
+        return {
+            'ticker': self.current_ticker,
+            'fcf_data_available': self.fcf_data_available,
+            'revenue_data_available': self.revenue_data_available,
+            'fcf_quarters': len(self.current_fcf_data),
+            'revenue_quarters': len(self.current_revenue_data),
+            'tabs_loaded': self.tab_data_loaded.copy(),
+            'data_source_info': self.data_source_info.copy(),
+            'current_tab': self._get_tab_name_from_index(self.notebook.index(self.notebook.select())) if CHARTS_AVAILABLE else 'none'
+        }
+    
+    # ========================================
+    # LEGACY COMPATIBILITY METHODS
+    # ========================================
     
     def set_container(self, container_frame: tk.Frame):
         """Set the container frame for the financials manager"""
         self.parent_frame = container_frame
         self._setup_ui()
-        print("📊 Financials Manager container updated")
+        print("📊 Separated Financials Manager container updated")
+    
+    def add_chart_tab(self, tab_name: str, chart_component):
+        """Add a new chart tab dynamically (for future expansion)"""
+        if not CHARTS_AVAILABLE or not self.notebook:
+            return None
+        
+        new_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
+        self.notebook.add(new_frame, text=tab_name)
+        
+        # Initialize the chart component with the new frame
+        if hasattr(chart_component, '__call__'):
+            chart_instance = chart_component(new_frame)
+            chart_instance.show_placeholder()
+            return chart_instance
+        return None
+    
+    def get_current_tab_index(self) -> int:
+        """Get currently selected tab index"""
+        if CHARTS_AVAILABLE and self.notebook:
+            try:
+                return self.notebook.index(self.notebook.select())
+            except tk.TclError:
+                return 0
+        return 0
+    
+    def select_tab(self, tab_index: int):
+        """Select a specific tab by index"""
+        if CHARTS_AVAILABLE and self.notebook:
+            try:
+                if tab_index < self.notebook.index("end"):
+                    self.notebook.select(tab_index)
+                    # Trigger data loading
+                    self._load_current_tab_data()
+            except tk.TclError:
+                pass
+    
+    def refresh_current_tab(self):
+        """Refresh the currently visible tab"""
+        self.force_reload_current_tab()
+
+
+# Factory function to create the manager with proper error handling
+def create_financials_manager(parent_frame: tk.Frame, event_bus: EventBus, **kwargs):
+    """Factory function to create FinancialsManager with error handling"""
+    try:
+        return FinancialsManager(parent_frame, event_bus, **kwargs)
+    except Exception as e:
+        print(f"❌ Error creating FinancialsManager: {e}")
+        # Return basic fallback manager
+        return BasicFinancialsManager(parent_frame, event_bus, **kwargs)
+
+
+class BasicFinancialsManager:
+    """Fallback financials manager if chart components are not available"""
+    
+    def __init__(self, parent_frame: tk.Frame, event_bus: EventBus, **kwargs):
+        """Initialize basic fallback manager"""
+        self.parent_frame = parent_frame
+        self.event_bus = event_bus
+        
+        # Color scheme
+        self.colors = {
+            'bg': '#2b2b2b',
+            'frame': '#3c3c3c',
+            'text': '#ffffff',
+            'header': '#4CAF50',
+            'warning': '#FF9800',
+        }
+        
+        # Setup basic UI
+        self._setup_basic_ui()
+        
+        # Subscribe to events
+        self.event_bus.subscribe(EventType.DATA_RECEIVED, self.on_data_received)
+        
+        print("📊 Basic Financials Manager initialized (fallback mode)")
+    
+    def _setup_basic_ui(self):
+        """Setup basic UI when chart components are not available"""
+        for widget in self.parent_frame.winfo_children():
+            widget.destroy()
+        
+        tk.Label(
+            self.parent_frame,
+            text="📊 Financial Analysis\n\n⚠️ Chart components not available\nPlease create components/charts/ directory with:\n\n• base_chart.py\n• revenue_chart.py\n• cashflow_chart.py\n• __init__.py\n\nThen restart the application.",
+            font=(UI_CONFIG['font_family'], 12),
+            bg=self.colors['bg'],
+            fg=self.colors['warning'],
+            justify='center'
+        ).pack(expand=True)
+    
+    def on_data_received(self, event):
+        """Handle data in basic mode"""
+        stock_data = event.data['stock_data']
+        print(f"📊 Basic mode: Received data for {stock_data.ticker}")
+    
+    def set_container(self, container_frame: tk.Frame):
+        """Set container in basic mode"""
+        self.parent_frame = container_frame
+        self._setup_basic_ui()
+    
+    def get_data_status(self) -> Dict[str, Any]:
+        """Get data status in basic mode"""
+        return {
+            'mode': 'basic_fallback',
+            'charts_available': False
+        }
 
 
 if __name__ == "__main__":
-    # Test the financials manager
+    # Test the separated financials manager
     root = tk.Tk()
-    root.title("Financials Manager Test")
-    root.geometry("800x600")
+    root.title("Separated Financials Manager Test")
+    root.geometry("1200x800")
     root.configure(bg='#2b2b2b')
     
     from core.event_system import EventBus
     
     event_bus = EventBus()
-    manager = FinancialsManager(root, event_bus)
+    
+    try:
+        manager = create_financials_manager(root, event_bus)
+        print("✅ Separated financials manager created successfully")
+    except Exception as e:
+        print(f"❌ Failed to create manager: {e}")
+        tk.Label(root, text=f"Error: {e}", fg='red').pack(expand=True)
     
     root.mainloop()

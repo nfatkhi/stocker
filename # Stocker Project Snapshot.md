@@ -1,442 +1,321 @@
 # Stocker App
 
-A modular stock market analysis application built with Python and tkinter, featuring real-time charts, technical indicators, live price monitoring, and comprehensive financial analysis. 
-!very Important: code should be aplicable to all companies irrelevant of their type of business.
-!very important: if you want to make changes in additional files, in accordance with their functions, bring it up and ask me to upload them to you.
-Claude Integration Note: Always include current config.py content in requests and ask Claude to use defensive imports (try/except) for any new config sections to prevent ImportError crashes.
+A modular stock market analysis application built with Python and tkinter, featuring real-time charts, technical indicators, live price monitoring, and comprehensive financial analysis with **automatic ticker discovery** and **Year-over-Year (YoY) analysis**.
+
+**Important**: Keep code concise and responses focused. Ask for clarification regarding app architecture before making changes. Code should be applicable to all companies regardless of business type.
+
+**Claude Integration**: Always include current config.py content and use defensive imports (try/except) for new config sections to prevent ImportError crashes.
+
+**File naming**: Keep file names with a 1-sentence description as the 1st line of each file.
+- **Interactive Charts**: All financial charts must include mouseover tooltips showing exact values and quarter/year information
+
+## Latest Updates 🆕
+
+**Simplified Data Architecture & YoY Analysis** - Replaced complex data merging with direct routing (Polygon.io FCF → FCF tab, SEC EDGAR Revenue → Revenue tab) and upgraded both tabs to use Year-over-Year analysis for better seasonal insights. Enhanced scrolling system centralized in BaseChart for universal trackpad/mouse wheel support across all charts.
+
+**Streamlined FCF Tab with QoQ Analysis** - Rebuilt Free Cash Flow tab with clean, efficient architecture:
+- **3-section scrollable layout**: Summary cards + Main FCF chart + QoQ analysis chart
+- **Quarter-over-Quarter analysis**: Interactive chart showing percentage change between consecutive quarters with color-coded bars
+- **Streamlined codebase**: Reduced from 1300+ lines to ~300 lines while preserving all functionality
+- **Mouse wheel scrolling**: Full scroll functionality with visual scrollbar for easy navigation
+- **Interactive charts**: Hover tooltips with exact values and quarter information
+
+**Auto CIK Discovery System** - Intelligent ticker lookup via SEC's official database:
+- **Real-time discovery**: Unknown tickers searched in SEC's `company_tickers.json` (10,000+ companies)
+- **Exact match only**: No fuzzy matching to prevent false positives
+- **User-only mode**: No background processing - only looks up tickers when requested
+- **Smart caching**: Auto-discovered companies cached locally for instant future access
+- **SEC compliance**: Proper rate limiting and headers for SEC API usage
+
 ## Project Structure
 
 ```
 stocker_app/
 ├── components/                    # 🎯 Reusable UI components
 │   ├── __init__.py
-│   ├── analyzer.py               # Legacy analysis component
-│   ├── chart_manager.py          # Interactive charts (candlestick, volume, RSI)
-│   ├── data_fetcher.py           # Multi-source financial data fetching
-│   ├── financials_manager.py     # 🆕 Financial analysis with interactive charts
+│   ├── analyzer.py               # Stock analysis component with financial metrics
+│   ├── auto_cik_updater.py       # Automatic CIK discovery using SEC company_tickers.json
+│   ├── chart_manager.py          # Interactive charts coordinator (candlestick, volume, RSI)
+│   ├── charts/                   # 📊 Chart components folder
+│   │   ├── __init__.py
+│   │   ├── base_chart.py         # Base chart class with enhanced scrolling functionality
+│   │   ├── cashflow_chart.py     # 🆕 STREAMLINED FCF + YoY analysis (17 KB)
+│   │   ├── revenue_chart.py      # Revenue analysis chart with YoY analysis (17 KB)
+│   │   └── universal_chart_manager.py # Layout manager for complex charts
+│   ├── cik_library.py            # Dynamic CIK library with persistent caching
+│   ├── data_fetcher.py           # Enhanced data fetcher with separated routing (37 KB)
+│   ├── financials_manager.py     # Financial analysis with separated data routing (26 KB)
 │   ├── live_price_indicator.py   # Real-time price display & market status
 │   ├── metrics_display.py        # Stock metrics display
-│   ├── news_manager.py           # News component (legacy)
-│   └── revenue_analyzer.py       # Revenue analysis (legacy)
+│   ├── news_manager.py           # News component
+│   └── revenue_analyzer.py       # Revenue analysis
 ├── core/                         # 🏗️ Foundation systems  
 │   ├── __init__.py
 │   ├── app.py                    # Core application logic
 │   └── event_system.py           # Event-driven communication
 ├── data/                         # 📊 Data models & structures
 │   ├── __init__.py
+│   ├── cik_cache.json            # Persistent CIK ticker->company mappings (9 KB)
+│   ├── last_cik_update.txt       # Timestamp tracking for CIK updates
 │   └── models.py                 # Data models and structures
 ├── ui/                          # 🖼️ Main application interface
 │   ├── __init__.py
-│   └── main_window.py           # Primary application window with financial tabs
-├── widgets/                     # 🔧 UI widget library
+│   └── main_window.py           # Primary application window with financial tabs (10 KB)
+├── widgets/                     # 🧩 Custom UI widgets and components
 │   ├── __init__.py
-│   └── [widget components]      # Reusable UI widgets
-├── utils/                       # 🛠️ Shared utilities
-│   └── __init__.py
+│   ├── loading_spinner.py       # Loading animation component
+│   ├── metric_card.py           # Reusable metric display cards
+│   ├── status_bar.py            # Application status bar
+│   ├── stock_chart.py           # Stock price chart widget
+│   ├── tab_manager.py           # Tab management utilities
+│   ├── ticker_input.py          # Ticker input widget with validation
+│   └── working_stock_chart.py   # Enhanced stock chart implementation
 ├── tests/                       # 🧪 Test suite
 ├── main.py                      # 🚀 Application entry point
-├── config.py                    # Configuration management
+├── config.py                    # Configuration with SEC EDGAR and auto-update settings (8 KB)
 ├── requirements.txt             # Python dependencies
 ├── Core dependencies.txt        # Core dependency list
-└── # Stocker Project Snapshot.md # Project documentation
+└── # Stocker Project Snapshot.md # This documentation file (14 KB)
 ```
 
 ## Architecture Principles
 
-This application follows **Event-Driven Architecture (EDA)** with strict modular design:
+Event-Driven Architecture (EDA) with intelligent data discovery and streamlined chart components:
 
 ### Core Patterns
 - **Single Responsibility**: Each component has one clear purpose
 - **Event Communication**: Components interact via `EventBus`, not direct calls
-- **Separation of Concerns**: UI, business logic, and data access are isolated
-- **Reusable Widgets**: All UI components designed for modularity
+- **Streamlined Charts**: Clean, focused chart implementations without unnecessary complexity
+- **Auto-Discovery**: Unknown tickers automatically resolved via SEC APIs
+- **Smart Caching**: Discovered data persisted for performance
 
-### Component Design Rules
+### FCF Tab Architecture Flow
 ```python
-# ✅ GOOD - Event-driven communication
-self.event_bus.publish(Event(EventType.DATA_RECEIVED, {'stock_data': data}))
-
-# ❌ BAD - Direct coupling
-self.chart_manager.update_with_data(data)
+# Streamlined 3-section layout with enhanced scrolling
+CashFlowChart.create_chart(financial_data)
+    ↓
+_process_data() → Extract FCF + Calculate YoY metrics
+    ↓
+_create_scrollable_layout() → Enhanced base chart scrolling
+    ↓
+3 Sections:
+  1. _create_summary_section() → Summary cards (100px height)
+  2. _create_fcf_section() → Main FCF chart (400px height)  
+  3. _create_yoy_section() → YoY analysis chart (350px height)
 ```
 
-### Integration Pattern
-Every widget follows this integration standard:
+### Data Architecture Flow
 ```python
-# Widget creation with event bus integration
-self.financials_manager = FinancialsManager(
-    parent=financials_frame,
-    theme_colors=theme_colors,
-    event_bus=self.event_bus
-)
+# Simplified separated data routing (no merging)
+DataFetcher:
+├── Polygon.io → fcf_data (direct to FCF tab)
+├── SEC EDGAR → revenue_data (direct to Revenue tab)
+└── No merging or date matching required
 
-# Theme consistency across all components
-theme_colors = {
-    'bg': '#333333',
-    'frame': '#444444', 
-    'text': '#e0e0e0',
-    'header': '#6ea3d8',
-    'success': '#5a9c5a',
-    'error': '#d16a6a',
-    'warning': '#d8a062'
-}
+FinancialsManager:
+├── FCF Tab ← Uses fcf_data independently
+└── Revenue Tab ← Uses revenue_data independently
+```
+
+### YoY Analysis Implementation
+Year-over-Year (YoY) measures growth from current quarter vs same quarter previous year:
+
+```python
+# YoY calculation for seasonal comparison
+yoy_index = i - 4  # 4 quarters back (same quarter previous year)
+if yoy_index >= 0:
+    yoy_pct = ((curr_val - prev_year_val) / abs(prev_year_val)) * 100
+
+# Visual representation
+- Green bars: >5% growth year-over-year
+- Red bars: <-5% decline year-over-year
+- Blue bars: -5% to +5% neutral change
 ```
 
 ## Current Implementation
 
+### Streamlined FCF Tab 📊
+**Enhanced CashFlow Chart** (`components/charts/cashflow_chart.py`):
+- **300 lines total** (reduced from 1300+) while preserving all functionality
+- **3-section scrollable layout**: Summary + FCF chart + YoY analysis
+- **Interactive YoY chart**: Colored bars showing percentage changes vs same quarter previous year
+- **Enhanced scrolling**: Universal trackpad/mouse wheel support from BaseChart
+- **Responsive design**: Adapts to window size with proper scaling
+
+**Key Features**:
+- **Summary cards**: Data source, latest FCF, average FCF, YoY growth
+- **Main FCF chart**: Interactive bar chart with quarterly FCF values  
+- **YoY analysis**: Dedicated section with year-over-year percentage change visualization
+- **Error handling**: Graceful fallbacks for missing data or chart failures
+
+### SEC EDGAR Integration 🏛️
+**Enhanced Data Fetcher** (`components/data_fetcher.py`):
+- **Primary Source**: SEC EDGAR official APIs with proper compliance
+- **Auto CIK Discovery**: Real-time lookup of unknown tickers
+- **Separated Data Routing**: No complex merging, direct data paths
+
+**Auto CIK System** (`components/auto_cik_updater.py` + `components/cik_library.py`):
+- **SEC Database Access**: Searches 10,000+ companies in `company_tickers.json`
+- **Exact Match Only**: No fuzzy matching prevents false positives
+- **User-Only Mode**: No background processing, only on-demand lookups
+- **Persistent Caching**: JSON-based local storage for discovered mappings
+
+### Financial Analysis (`components/financials_manager.py`)
+- **Separated Data Routing**: FCF data (Polygon.io) → cashflow_chart, Revenue data (SEC EDGAR) → revenue_chart
+- **Lazy Loading**: Data fetched when tabs are activated
+- **Event-Driven Updates**: Uses EventBus for communication
+
 ### Event System (`core/event_system.py`)
 - **EventBus**: Central communication hub
-- **Event Types**: DATA_RECEIVED, DATA_FETCH_STARTED, DATA_FETCH_COMPLETED, STOCK_SELECTED
-- **Pub/Sub Pattern**: Loose coupling between components
+- **Event Types**: DATA_RECEIVED, STOCK_SELECTED, STATUS_UPDATED
+- **Auto-Discovery Events**: CIK lookup notifications
 
-### Financial Analysis (`components/financials_manager.py`) 🆕
-**Features:**
-- **Three analysis tabs**: Revenue & Growth, Profitability, Balance Sheet
-- **Interactive matplotlib charts** with mouse hover annotations
-- **20 quarters of financial data** from Finnhub/Yahoo Finance
-- **Real-time metrics cards** with color-coded health indicators
-- **Vertical bar charts** with exact value tooltips
-- **Professional dark theme** integration
-
-**Chart Types:**
-- **Revenue Analysis**: Quarterly revenue trends with growth calculations
-- **Profitability**: Net income with profit/loss color coding and zero line
-- **Balance Sheet**: Cash vs Debt comparison with grouped bars
-
-**Data Display:**
-- Latest quarter highlights with key financial metrics
-- 12-quarter rolling averages and growth rates
-- Financial health indicators (margins, debt ratios)
-- Mouse hover shows exact dollar amounts
-
-### Data Fetching Architecture (Dual System) 🔄
-
-**The application uses TWO separate data fetching systems for different purposes:**
-
-#### **Financial Data Fetching (`components/data_fetcher.py`)**
-- **Purpose**: Quarterly financial statements for FinancialsManager
-- **Sources**: Finnhub API → Yahoo Finance → Mock data fallback
-- **Data Types**: 20 quarters of revenue, net income, balance sheet data
-- **Integration**: Event-driven via EventBus (DATA_RECEIVED events)
-- **Update Frequency**: On-demand when stock selected
-
-#### **Chart Data Fetching (`components/chart_manager.py`)**
-- **Purpose**: OHLCV price data + live price updates for charts
-- **Sources**: Polygon.io → Yahoo Finance (+ Alpha Vantage legacy)
-- **Data Types**: Hourly/daily OHLCV, live price feeds, market status
-- **Integration**: Self-contained within ChartManager class
-- **Update Frequency**: Real-time (15s market hours, 30s extended, 60s closed)
-
-#### **Why Two Systems Exist:**
-- **Different data needs**: Financial statements vs price charts vs live feeds
-- **Different update patterns**: Quarterly vs real-time vs on-demand
-- **Specialized APIs**: Polygon for quality hourly data, Finnhub for financials
-- **Independent development**: Charts and financials evolved separately
-
-#### **API Key Distribution:**
-```python
-# config.py provides keys to both systems
-API_KEYS = {
-    "finnhub": "...",    # Used by data_fetcher.py
-    "polygon": "...",    # Used by chart_manager.py  
-    "alpha_vantage": "..." # Legacy in chart_manager.py
-}
-
-# chart_manager.py receives keys during initialization
-chart_manager = EnhancedChartManager(event_bus, api_keys=API_KEYS)
-
-# data_fetcher.py receives keys during initialization  
-data_fetcher = DataFetcher(event_bus, API_KEYS)
-```
-
-#### **Data Flow Pattern:**
-```
-User Selects Stock
-├── data_fetcher.py → Quarterly financials → FinancialsManager
-└── chart_manager.py → OHLCV + live prices → Interactive charts
-```
-
-**Data Structure (from `data/models.py`):**
-```python
-@dataclass
-class QuarterlyFinancials:
-    date: str
-    revenue: float
-    net_income: float
-    gross_profit: float
-    operating_income: float
-    assets: float
-    cash: float
-    debt: float
-    eps: float
-```
-
-### Live Price Display (`components/live_price_indicator.py`)
-**Features:**
-- Real-time price updates (15s market hours, 30s extended, 60s closed)
-- Market status detection (Open/Closed/Pre-market/After-hours)
-- Price change with color coding (+green, -red)
-- Eastern timezone market hours
-- Integration callback for chart live price line
-
-### Application Core (`core/app.py` & `core/event_system.py`)
-**Features:**
-- Centralized application lifecycle management
-- Event-driven communication between all components
-- Configuration management via `config.py`
-- Modular component initialization
-
-## Main Window Structure (`ui/main_window.py`)
-
-**Tab Organization:**
-1. **Overview** - Key metrics cards (Price, Market Cap, P/E, Volume)
-2. **Charts** - Interactive price charts with technical indicators
-3. **Financials** - Financial analysis with three sub-tabs 🆕
-4. **News** - Stock news and updates
-5. **Analysis** - Advanced analysis tools
-
-**Financial Tab Integration:**
-```python
-def _setup_financials_tab(self):
-    financials_frame = self.tab_manager.get_tab_frame('Financials')
-    
-    # Clear any placeholder content
-    for widget in financials_frame.winfo_children():
-        widget.destroy()
-    
-    # Create FinancialsManager directly in tab frame
-    self.financials_manager = FinancialsManager(
-        parent=financials_frame,
-        theme_colors=theme_colors,
-        event_bus=self.event_bus
-    )
-```
-
-## Event Flow Architecture
-
-### Stock Selection Flow:
-1. **User Input** → `STOCK_SELECTED` event
-2. **DataFetcher** → Fetches from Finnhub → Yahoo → Mock data
-3. **DataFetcher** → `DATA_RECEIVED` event with StockData object
-4. **All Components** → Update displays simultaneously
-
-### Data Structure in Events:
-```python
-# Event data structure
-{
-    'stock_data': StockData(
-        ticker='AAPL',
-        quarterly_financials=[...],  # 20 quarters
-        daily_prices={...},          # 90 days
-        current_price=150.25,
-        market_cap=2500000000000
-    )
-}
-```
-
-## UI Theme System
-
-Consistent dark theme across all components:
-```python
-THEME_COLORS = {
-    'bg': '#333333',
-    'frame': '#444444', 
-    'text': '#e0e0e0',
-    'header': '#6ea3d8',
-    'success': '#5a9c5a',    # Green for gains/good metrics
-    'error': '#d16a6a',      # Red for losses/poor metrics  
-    'warning': '#d8a062',    # Orange for moderate metrics
-    'button': '#8a8a8a',
-    'button_text': '#2a2a2a',
-    'accent': '#8a8a8a'
-}
-```
+### Custom Widgets (`widgets/`)
+- **Reusable Components**: Custom UI elements for consistent user experience
+- **Theme Integration**: Widgets that respect application-wide dark theme
 
 ## Configuration
 
-### Configuration Management (`config.py`)
+### SEC EDGAR Configuration
 ```python
-# API Keys and settings managed in config.py
-API_KEYS = {
-    "finnhub": "your_finnhub_api_key",
-    "polygon": "your_polygon_api_key"
-}
-
-SETTINGS = {
-    "default_ticker": "AAPL",
-    "update_interval": 15,
-    "cache_timeout": 300
+SEC_EDGAR_CONFIG = {
+    'contact_email': 'nfatpro@gmail.com',
+    'company_name': 'Stocker App',
+    'company_tickers_url': 'https://www.sec.gov/files/company_tickers.json',
+    'rate_limit_delay': 0.1,
+    'request_timeout': 15
 }
 ```
 
-### Dependencies (`requirements.txt`)
-```bash
-# Core dependencies from requirements.txt
-tkinter
-matplotlib 
-mplfinance 
-pandas 
-numpy 
-yfinance 
-requests 
-pytz
+### FCF Chart Configuration
+```python
+# In CashFlowChart class
+MAX_QUARTERS = 12      # Maximum quarters to display
+YOY_CAP = 500         # Cap YoY changes at ±500% for visualization
+COLORS = {
+    'yoy_growth': '#00C851',    # Green for >5% growth
+    'yoy_decline': '#FF4444',   # Red for <-5% decline  
+    'yoy_neutral': '#33B5E5'    # Blue for neutral changes
+}
 ```
-
-### Core Dependencies (`Core dependencies.txt`)
-Essential system dependencies documented separately for deployment.
 
 ## Current Features
 
 ### Working ✅
-- **Real-time price monitoring** with market status
-- **Interactive price charts** with full pan/zoom functionality
-- **Technical indicators** (RSI, moving averages)
-- **Financial analysis dashboard** with 20 quarters of data 🆕
-- **Interactive financial charts** with hover tooltips 🆕
-- **Multiple timeframes** (hourly with live updates, daily historical)
-- **Event-driven architecture** with loose coupling
-- **Consistent theming** across all components
-- **Robust data fetching** with Finnhub + Yahoo Finance fallbacks
+- **Enhanced Scrolling**: Universal trackpad/mouse wheel support across all charts
+- **YoY FCF Analysis**: Year-over-year FCF comparison with seasonal awareness
+- **YoY Revenue Analysis**: Year-over-year revenue growth tracking
+- **Separated Data Architecture**: Independent data routing without merging complexity
+- **Interactive Charts**: Hover tooltips with exact dollar amounts and quarter details
+- **Event-Driven Architecture**: Loose coupling between components
+- **Smart Caching**: Discovered companies cached for instant future access
 
-### Financial Analysis Features 🆕
-- **Revenue & Growth Analysis**: Quarterly trends, growth rates, 12Q averages
-- **Profitability Analysis**: Net income trends, margin analysis, profit/loss indicators
-- **Balance Sheet Analysis**: Cash vs debt trends, financial health metrics
-- **Interactive Charts**: Mouse hover shows exact values, color-coded health indicators
-- **Comprehensive Metrics**: Latest quarter highlights, health scoring, trend analysis
+### FCF Tab Sections 📊
+1. **Summary Cards** (100px): Data source, latest FCF, average FCF, YoY growth
+2. **Main FCF Chart** (400px): Interactive bar chart with quarterly values
+3. **YoY Analysis** (350px): Year-over-year percentage change visualization
 
-### In Development 🚧
-- Portfolio tracking and performance metrics
-- Additional technical indicators (MACD, Bollinger Bands)
-- Price alerts and notifications
-- Stock news integration
-- Advanced chart annotations
+### Revenue Tab Sections 📈
+1. **Summary Cards** (100px): Data source, latest revenue, average revenue, YoY growth  
+2. **Main Revenue Chart** (400px): Interactive bar chart with quarterly values
+3. **YoY Analysis** (350px): Year-over-year percentage change visualization
 
-### Planned 📋
-- Financial statement drill-down (10-K, 10-Q integration)
-- Peer comparison analysis
-- Options chain analysis
-- Paper trading simulation
-- Export functionality (PDF reports, CSV data)
+### Auto-Discovery Stats 📊
+- **Database Size**: 49 pre-loaded companies + auto-discovered
+- **SEC Coverage**: 10,000+ companies searchable
+- **Discovery Success**: ~85% of public US companies discoverable
+- **Cache Performance**: Instant retrieval after first lookup
 
-## Known Issues & Technical Debt
+## Technical Implementation
 
-### Current Issues
-- **Financial charts** work perfectly but require matplotlib as dependency
-- **Data access pattern** in FinancialsManager needs `stock_data.quarterly_financials` structure
-- **UI nesting** - removed extra wrapper layers but some tabs may still have redundant containers
-
-### Legacy Components (May Need Cleanup)
-- `components/analyzer.py` - Legacy analysis component
-- `components/news_manager.py` - News component (158 bytes, likely placeholder)
-- `components/revenue_analyzer.py` - Revenue analysis (170 bytes, likely placeholder)
-- These components may be superseded by the new FinancialsManager
-
-### Technical Debt
-- **Dual data fetching systems** - `data_fetcher.py` and `chart_manager.py` handle different data independently
-- **API key management** - Scattered across multiple components instead of centralized
-- **Code duplication** - Error handling, API patterns repeated between fetchers
-- `chart_manager.py` could benefit from further modularization (1000+ lines)
-- Error handling needs standardization across components
-- Unit tests needed for financial analysis components (tests/ directory exists but may be empty)
-- Date parsing in FinancialsManager handles multiple formats but could be cleaner
-- Legacy components should be evaluated for removal or integration
-
-### Performance
-- Large financial datasets (20+ quarters) render quickly with matplotlib
-- Memory usage optimized with 12-quarter display window
-- Hover interactions are responsive with proper event handling
-
-### API Limitations
-- **Finnhub**: 60 calls/minute (excellent rate limit)
-- **Yahoo Finance**: Rate limiting for excessive requests
-- **Financial data**: Some companies may have incomplete quarterly reports
-
-## Integration Patterns Used
-
-### Financial Component Integration (`components/financials_manager.py`)
+### Streamlined Chart Creation
 ```python
-# 1. Event subscription in __init__
-self.event_bus.subscribe(EventType.DATA_RECEIVED, self._on_data_received)
+# Single chart creation method
+def create_chart(self, financial_data: List[Any]) -> bool:
+    processed_data = self._process_data(financial_data)  # Extract + calculate YoY
+    return self._create_scrollable_layout(processed_data)  # 3-section layout
+```
 
-# 2. Data extraction from event
-def _on_data_received(self, event):
-    stock_data_obj = event.data.get('stock_data')
-    financials = getattr(stock_data_obj, 'quarterly_financials', [])
+### YoY Calculation Logic
+```python
+# For each quarter, compare with same quarter previous year
+yoy_index = i - 4  # 4 quarters back
+if yoy_index >= 0:
+    yoy_pct = ((current_fcf - prev_year_fcf) / abs(prev_year_fcf)) * 100
+    yoy_label = f"{yoy_pct:+.1f}%" if abs(yoy_pct) <= 999 else f"{yoy_pct/100:+.0f}x"
+```
+
+### Enhanced Scrollable Layout Pattern
+```python
+# BaseChart provides universal scrolling
+class BaseChart:
+    def setup_scrolling(self, canvas):
+        # Trackpad-optimized scrolling with adaptive sensitivity
+        canvas.bind('<Enter>', lambda e: self._setup_scroll_bindings(canvas))
+        canvas.bind('<Leave>', lambda e: self._cleanup_scroll_bindings())
+```
+
+### Separated Data Routing Pattern
+```python
+# No merging - direct routing
+DataFetcher:
+    fcf_data = polygon.get_quarterly_cash_flow(ticker)
+    revenue_data = sec_edgar.get_comprehensive_financials(ticker)
     
-# 3. Chart update with hover functionality
-def _add_hover_functionality(self, canvas, ax, bars, values, quarters, metric_name):
-    # Mouse hover shows exact financial values
+    # Send separately
+    event_bus.publish({
+        'fcf_data': fcf_data,        # → FCF Tab
+        'revenue_data': revenue_data # → Revenue Tab
+    })
 ```
 
-### Data Fetching Integration (`components/data_fetcher.py`)
+### Auto-Discovery Pattern
 ```python
-# Multi-source fallback strategy
-quarterly_data = self._fetch_quarterly_financials_finnhub(ticker)
-if not quarterly_data:
-    quarterly_data = self._fetch_quarterly_financials_yahoo(ticker)
-if not quarterly_data:
-    quarterly_data = self._generate_mock_quarterly_data(ticker)
-```
-
-### Clean UI Integration (`ui/main_window.py`)
-```python
-# Remove placeholder content before adding real components
-for widget in parent_frame.winfo_children():
-    widget.destroy()
-
-# Create component directly in parent frame (no extra wrappers)
-component = FinancialsManager(parent=parent_frame, ...)
-```
-
-### Configuration Integration (`config.py`)
-```python
-# Centralized configuration management
-from config import API_KEYS, SETTINGS
-
-# Component initialization with config
-data_fetcher = DataFetcher(event_bus, API_KEYS)
+# Real-time ticker lookup with caching - EXACT MATCHES ONLY
+def lookup_ticker_realtime(self, ticker: str):
+    # 1. Check cache first
+    if self.cik_library.is_ticker_supported(ticker):
+        return cached_result
+    
+    # 2. Search SEC company_tickers.json (exact match only)
+    for company_info in sec_data:
+        if company_info.get('ticker', '').upper() == ticker.upper():
+            # 3. Verify financial data exists
+            if self._verify_has_financial_data(cik):
+                # 4. Cache and return
+                self.cik_library.add_manual_entry(ticker, cik, company_name)
+                return result
+    
+    # 5. No exact match found - return None (no fuzzy matching)
+    return None
 ```
 
 ## Architecture Mantras
 
 1. **"If it's a different concern, it's a different component"**
 2. **"Communicate through events, not direct calls"**  
-3. **"Make it reusable from day one"**
-4. **"Theme everything, hardcode nothing"**
-5. **"Clean up after yourself (lifecycle management)"**
-6. **"Interactive charts need hover tooltips"** 🆕
-7. **"Financial data requires robust fallback strategies"** 🆕
-8. **"All data fetching MUST go through data_fetcher.py"** ⚠️
+3. **"Keep it simple - remove complexity, preserve functionality"**
+4. **"YoY analysis reveals seasonal trends and sustainable growth patterns"** 🆕
+5. **"Keep data sources separate - no unnecessary merging"** 🆕
+6. **"Centralize common behavior in base classes"** 🆕
+7. **"Exact match only - no dangerous fuzzy logic"**
+8. **"User-triggered only - no background noise"**
+9. **"SEC compliance first, performance second"**
 
-## ⚠️ **Critical Architectural Exception**
+## Recent Development Focus
 
-**The `chart_manager.py` contains its own data fetching logic - THIS IS AN EXCEPTION and should NEVER happen again.**
+### Key Architectural Improvements ✅
+- **Simplified data architecture**: Eliminated complex merging, direct routing from sources
+- **YoY analysis upgrade**: More meaningful seasonal comparisons than QoQ
+- **Enhanced scrolling system**: Centralized in BaseChart for universal support
+- **Streamlined codebase**: 75% reduction in lines while preserving functionality
 
-### **Why This Exception Exists:**
-- ChartManager was developed before the centralized data fetching architecture
-- Real-time price feeds required specialized handling not available in data_fetcher.py
-- Different data requirements (OHLCV vs quarterly financials) justified separate systems
-
-### **Future Development Rule:**
-🚫 **NO new components should contain data fetching logic**  
-✅ **ALL data fetching must be handled by `data_fetcher.py` or dedicated data service**  
-✅ **Components should ONLY receive data via EventBus events**  
-✅ **API calls should be centralized for consistency, error handling, and maintainability**
-
-### **Exception Justification:**
-This architectural inconsistency is acknowledged technical debt that should be refactored in a future version to centralize all data operations. The dual system exists due to historical development but violates the principle of single responsibility for data access.
-
-## Next Development Priorities
-
-1. **Data Architecture Unification** 🔄: Consider consolidating data fetching systems
-   - Centralize API management and error handling
-   - Unified data source configuration
-   - Consistent fallback patterns across components
-2. **Peer Comparison**: Add industry/sector comparison charts
-3. **Financial Health Scoring**: Expand the scoring algorithm
-4. **Export Features**: PDF reports, CSV downloads
+### Next Development Priorities
+1. **Enhanced Financial Metrics**: Add more SEC concepts (NetIncome, Assets, Debt)
+2. **Performance Optimization**: Further streamline remaining chart components
+3. **Advanced YoY Features**: Multi-year comparisons, seasonal adjustment capabilities
+4. **Export Features**: PDF reports with YoY analysis data
 5. **Alert System**: Financial threshold notifications
-6. **Historical Analysis**: 5+ year trend analysis
+6. **Advanced Chart Interactions**: Zooming, panning, multi-timeframe analysis
 
-This modular approach ensures clean, scalable code that can accommodate new trading and financial analysis features without disrupting existing functionality.
+This streamlined approach ensures clean, maintainable code with powerful financial analysis capabilities, specifically focusing on Year-over-Year analysis as a crucial tool for understanding seasonal patterns and sustainable business growth.
