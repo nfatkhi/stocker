@@ -1,14 +1,38 @@
-# components/charts/cashflow_chart.py - FCF chart with actual quarterly amounts and YoY analysis
+# components/charts/cashflow/cashflow_chart.py - FCF chart with separated data processing
 
 import tkinter as tk
 from tkinter import ttk
 import math
-from typing import List, Dict, Any, Tuple, NamedTuple
+from typing import List, Dict, Any, Tuple
 
 try:
-    from .base_chart import FinancialBarChart
+    from ..base_chart import FinancialBarChart
 except ImportError:
-    from .base_chart import FinancialBarChart
+    try:
+        from .base_chart import FinancialBarChart
+    except ImportError:
+        from components.charts.base_chart import FinancialBarChart
+
+try:
+    from .cashflow_data_processor import process_cashflow_data, CashflowDataPoint, CashflowMetrics
+except ImportError:
+    # Fallback for standalone testing
+    print("⚠️ CashflowDataProcessor not available - using basic processing")
+    
+    class CashflowDataPoint:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+    
+    class CashflowMetrics:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+    
+    def process_cashflow_data(data, max_quarters=12):
+        return [], CashflowMetrics(latest_fcf=0, average_fcf=0, total_quarters=0, 
+                                  recent_growth="N/A", data_quality="No Processor", 
+                                  conversion_success=False)
 
 try:
     from config import UI_CONFIG
@@ -16,21 +40,8 @@ except ImportError:
     UI_CONFIG = {'font_family': 'Arial', 'font_size': 10}
 
 
-class CashflowDataPoint(NamedTuple):
-    """Financial quarter data with YoY metrics"""
-    quarter_label: str
-    date: str
-    fcf_dollars: float
-    yoy_change_pct: float = float('nan')
-    yoy_label: str = "N/A"
-    yoy_description: str = "No previous year quarter"
-
-
 class CashFlowChart(FinancialBarChart):
-    """FCF chart with YoY analysis and actual quarterly amounts"""
-    
-    MAX_QUARTERS = 12
-    YOY_CAP = 500
+    """FCF chart with separated data processing and enhanced UI"""
     
     COLORS = {
         'positive': '#4CAF50', 'negative': '#F44336', 'neutral': '#9E9E9E',
@@ -39,6 +50,11 @@ class CashFlowChart(FinancialBarChart):
 
     def __init__(self, parent_frame: tk.Frame, ticker: str = "", **kwargs):
         super().__init__(parent_frame, ticker, **kwargs)
+        self.data_processor_available = True
+        try:
+            from .cashflow_data_processor import CashflowDataProcessor
+        except ImportError:
+            self.data_processor_available = False
     
     def get_chart_title(self) -> str:
         return "Free Cash Flow Analysis"
@@ -47,136 +63,39 @@ class CashFlowChart(FinancialBarChart):
         return "Free Cash Flow (Millions $)"
 
     def create_chart(self, financial_data: List[Any]) -> bool:
-        """Create 3-section scrollable FCF analysis with enhanced scrolling"""
+        """Create FCF analysis using data processor"""
         if not financial_data:
             return self._show_error("No financial data provided")
         
-        processed_data = self._process_data(financial_data)
-        if not processed_data:
+        # Process data using separated processor
+        try:
+            data_points, metrics = process_cashflow_data(financial_data, max_quarters=12)
+        except Exception as e:
+            print(f"❌ Data processing failed: {e}")
+            return self._show_error(f"Data processing error: {str(e)}")
+        
+        if not data_points:
             return self._show_error("No meaningful FCF data available")
         
-        return self._create_scrollable_layout(processed_data)
+        # Store for UI rendering
+        self.data_points = data_points
+        self.metrics = metrics
+        
+        return self._create_scrollable_layout()
     
-    def _process_data(self, raw_data: List[Any]) -> List[CashflowDataPoint]:
-        """Process raw data into structured format with YoY calculations - CONVERT CUMULATIVE TO ACTUAL"""
-        print(f"🔄 Processing {len(raw_data)} quarters - Converting cumulative to actual quarterly amounts")
-        
-        # DEBUG: Show raw data first
-        print(f"🔍 DEBUG: Raw FCF data sample:")
-        for i, item in enumerate(raw_data[:3]):
-            fcf = getattr(item, 'cash', 0)
-            date = getattr(item, 'date', 'no-date')
-            print(f"   {i+1}. Date: {date}, FCF: ${fcf/1e6:.1f}M")
-        
-        # STEP 1: Convert cumulative quarterly data to actual quarterly amounts  
-        conversion_success = False
-        try:
-            # Try multiple import paths
-            try:
-                from .quarterly_converter import convert_financial_data_to_actual_quarters
-                print(f"✅ SUCCESS: Imported from .quarterly_converter")
-            except ImportError:
-                try:
-                    from components.charts.quarterly_converter import convert_financial_data_to_actual_quarters
-                    print(f"✅ SUCCESS: Imported from components.charts.quarterly_converter")
-                except ImportError:
-                    raise ImportError("Cannot import quarterly_converter from any path")
-            
-            # Try conversion
-            print(f"🔄 Attempting conversion of {len(raw_data[:self.MAX_QUARTERS])} quarters...")
-            converted_data = convert_financial_data_to_actual_quarters(raw_data[:self.MAX_QUARTERS])
-            conversion_success = True
-            print(f"✅ CONVERSION SUCCESS: Got {len(converted_data)} converted quarters")
-            
-            # DEBUG: Show converted data
-            print(f"🔍 DEBUG: Converted FCF data sample:")
-            for i, item in enumerate(converted_data[:3]):
-                fcf = getattr(item, 'cash', 0)
-                date = getattr(item, 'date', 'no-date')
-                is_actual = getattr(item, 'is_actual_quarterly', False)
-                print(f"   {i+1}. Date: {date}, FCF: ${fcf/1e6:.1f}M, Actual: {is_actual}")
-                
-        except Exception as e:
-            print(f"❌ CONVERSION FAILED: {e}")
-            print(f"⚠️ Using raw data (will show cumulative amounts)")
-            converted_data = raw_data[:self.MAX_QUARTERS]
-        
-        # Pass conversion success to chart creation
-        self.conversion_success = conversion_success
-        
-        data_points = []
-        
-        # Extract FCF data from converted (actual quarterly) data
-        for financial in reversed(converted_data):
-            fcf = float(financial.cash) if hasattr(financial, 'cash') and financial.cash != 0 else float('nan')
-            
-            # Add indicator if this is actual quarterly data
-            is_actual = getattr(financial, 'is_actual_quarterly', False)
-            
-            # Use XBRL quarter information if available, otherwise parse date
-            xbrl_quarter = getattr(financial, 'document_fiscal_period_focus', None)
-            xbrl_year = getattr(financial, 'document_fiscal_year_focus', None)
-            
-            if xbrl_quarter and xbrl_year:
-                quarter_label = f"{xbrl_year}{xbrl_quarter}"
-                print(f"   📋 Using XBRL quarter: {quarter_label}")
-            else:
-                quarter_label = self.parse_quarter_label(financial.date)
-                print(f"   📅 Using parsed quarter: {quarter_label}")
-            
-            data_points.append(CashflowDataPoint(
-                quarter_label=quarter_label,
-                date=financial.date,
-                fcf_dollars=fcf
-            ))
-            
-            if not math.isnan(fcf):
-                actual_indicator = " (Actual Q)" if is_actual else " (Raw)"
-                print(f"   💰 {quarter_label}: ${fcf/1e6:.1f}M{actual_indicator}")
-        
-        # Calculate YoY changes (compare with same quarter previous year)
-        processed = []
-        for i, dp in enumerate(data_points):
-            # Look for same quarter previous year (4 quarters back)
-            yoy_index = i - 4
-            if yoy_index >= 0 and yoy_index < len(data_points):
-                prev_year_val = data_points[yoy_index].fcf_dollars
-                curr_val = dp.fcf_dollars
-                
-                if math.isnan(curr_val) or math.isnan(prev_year_val):
-                    yoy_pct, yoy_label, yoy_desc = float('nan'), "N/A", "Insufficient data"
-                elif prev_year_val == 0:
-                    yoy_pct, yoy_label, yoy_desc = float('inf'), "New+", f"${curr_val/1e6:.1f}M from $0"
-                else:
-                    yoy_pct = ((curr_val - prev_year_val) / abs(prev_year_val)) * 100
-                    yoy_label = f"{yoy_pct:+.1f}%" if abs(yoy_pct) <= 999 else f"{yoy_pct/100:+.0f}x"
-                    prev_fmt = f"${prev_year_val/1e6:.1f}M"
-                    curr_fmt = f"${curr_val/1e6:.1f}M"
-                    yoy_desc = f"{prev_fmt} → {curr_fmt} (vs {data_points[yoy_index].quarter_label})"
-                
-                processed.append(dp._replace(
-                    yoy_change_pct=yoy_pct,
-                    yoy_label=yoy_label,
-                    yoy_description=yoy_desc
-                ))
-            else:
-                processed.append(dp)
-        
-        return [d for d in processed if not math.isnan(d.fcf_dollars)]
-    
-    def _create_scrollable_layout(self, data: List[CashflowDataPoint]) -> bool:
+    def _create_scrollable_layout(self) -> bool:
         """Create scrollable 3-section layout using enhanced base chart scrolling"""
         # Clear existing content
         for widget in self.parent_frame.winfo_children():
             widget.destroy()
         
-        # Use base chart's enhanced scrollable container with trackpad support
+        # Use base chart's enhanced scrollable container
         canvas, scrollbar, content_frame = self.create_scrollable_container(self.parent_frame)
         
         # Create the three sections in the content frame
-        self._create_summary_section(content_frame, data)
-        self._create_fcf_section(content_frame, data)
-        self._create_yoy_section(content_frame, data)
+        self._create_summary_section(content_frame)
+        self._create_fcf_section(content_frame)
+        self._create_yoy_section(content_frame)
         
         # Update scroll region after content is added
         self.parent_frame.update_idletasks()
@@ -204,7 +123,7 @@ class CashFlowChart(FinancialBarChart):
             scroll_amount = max(1, abs(int(delta)))
             direction = 1 if delta > 0 else -1
             canvas.yview_scroll(direction * scroll_amount, "units")
-            return "break"  # Prevent event from propagating
+            return "break"
         
         def bind_to_widget_and_children(widget):
             """Recursively bind scroll events to widget and all children"""
@@ -213,44 +132,42 @@ class CashFlowChart(FinancialBarChart):
                 widget.bind("<Button-4>", scroll_handler) 
                 widget.bind("<Button-5>", scroll_handler)
                 
-                # Bind to all children recursively
                 for child in widget.winfo_children():
                     bind_to_widget_and_children(child)
             except tk.TclError:
                 pass
         
-        # Apply to all content
         bind_to_widget_and_children(content_frame)
     
-    def _create_summary_section(self, parent: tk.Frame, data: List[CashflowDataPoint]):
-        """Create summary cards"""
+    def _create_summary_section(self, parent: tk.Frame):
+        """Create summary cards using processed metrics"""
         frame = tk.Frame(parent, bg=self.colors['frame'], relief='solid', bd=2, height=100)
         frame.pack(fill='x', pady=(0, 10))
         frame.pack_propagate(False)
         
-        tk.Label(frame, text=f"{self.ticker} - FCF Summary", font=(UI_CONFIG['font_family'], 12, 'bold'),
+        tk.Label(frame, text=f"{self.ticker} - FCF Summary", 
+                font=(UI_CONFIG['font_family'], 12, 'bold'),
                 bg=self.colors['frame'], fg=self.colors['header']).pack(pady=(5, 0))
         
         cards_frame = tk.Frame(frame, bg=self.colors['frame'])
         cards_frame.pack(fill='both', expand=True, padx=10, pady=(0, 5))
         
-        latest_fcf = data[-1].fcf_dollars if data else 0
-        avg_fcf = sum(d.fcf_dollars for d in data) / len(data) if data else 0
-        recent_count = len([d for d in data if d.date.startswith(('2024', '2025'))])
+        # Use processed metrics
+        latest_fcf = self.metrics.latest_fcf
+        avg_fcf = self.metrics.average_fcf
+        recent_growth = self.metrics.recent_growth
+        data_quality = self.metrics.data_quality
         
-        # Calculate growth if we have YoY data
-        recent_growth = "N/A"
-        if data:
-            recent_yoy_data = [d for d in data[-4:] if not math.isnan(d.yoy_change_pct) and not math.isinf(d.yoy_change_pct)]
-            if recent_yoy_data:
-                avg_yoy = sum(d.yoy_change_pct for d in recent_yoy_data) / len(recent_yoy_data)
-                recent_growth = f"{avg_yoy:+.1f}%"
+        # Determine data source description
+        data_source_desc = "Cache + Processor"
+        if self.metrics.conversion_success:
+            data_source_desc += " (Actual Q)"
         
         metrics = [
-            ("Data Source", "SEC EDGAR", '#1976D2'),
+            ("Data Source", data_source_desc, '#1976D2'),
             ("Latest FCF", f"${latest_fcf/1e6:.1f}M", self.colors['success']),
             ("Average FCF", f"${avg_fcf/1e6:.1f}M", self.colors['accent']),
-            ("YoY Growth", recent_growth, '#2E7D32' if recent_growth != "N/A" and "+" in recent_growth else self.colors['warning'])
+            ("YoY Growth", recent_growth, '#2E7D32' if "+" in recent_growth else self.colors['warning'])
         ]
         
         for label, value, color in metrics:
@@ -261,14 +178,14 @@ class CashFlowChart(FinancialBarChart):
             tk.Label(card, text=value, font=(UI_CONFIG['font_family'], 9, 'bold'), 
                     bg=self.colors['bg'], fg=color).pack(pady=(0, 3))
     
-    def _create_fcf_section(self, parent: tk.Frame, data: List[CashflowDataPoint]):
-        """Create main FCF chart"""
+    def _create_fcf_section(self, parent: tk.Frame):
+        """Create main FCF chart using processed data"""
         frame = tk.Frame(parent, bg=self.colors['frame'], relief='solid', bd=2, height=400)
         frame.pack(fill='both', expand=True, pady=(0, 10))
         frame.pack_propagate(False)
         
-        conversion_success = getattr(self, 'conversion_success', False)
-        title_suffix = "(Actual Amounts)" if conversion_success else "(Raw Data - May Be Cumulative)"
+        # Title with data quality indicator
+        title_suffix = f"({self.metrics.data_quality} Data Quality)"
         
         tk.Label(frame, text=f"Free Cash Flow Trend {title_suffix}", 
                 font=(UI_CONFIG['font_family'], 14, 'bold'),
@@ -277,14 +194,15 @@ class CashFlowChart(FinancialBarChart):
         content = tk.Frame(frame, bg=self.colors['bg'])
         content.pack(fill='both', expand=True, padx=10, pady=(0, 10))
         
-        values = [d.fcf_dollars for d in data]
-        quarters = [d.quarter_label for d in data]
+        # Extract chart data
+        values = [dp.fcf_dollars for dp in self.data_points]
+        quarters = [dp.quarter_label for dp in self.data_points]
         
         self.create_interactive_chart(content, values, quarters, f"{self.ticker} Free Cash Flow", 
                                      "Free Cash Flow", self.COLORS['positive'], "FCF")
     
-    def _create_yoy_section(self, parent: tk.Frame, data: List[CashflowDataPoint]):
-        """Create YoY analysis chart with consistent dark theme formatting"""
+    def _create_yoy_section(self, parent: tk.Frame):
+        """Create YoY analysis chart using processed data"""
         frame = tk.Frame(parent, bg=self.colors['frame'], relief='solid', bd=2, height=350)
         frame.pack(fill='both', expand=True)
         frame.pack_propagate(False)
@@ -296,54 +214,59 @@ class CashFlowChart(FinancialBarChart):
         content = tk.Frame(frame, bg=self.colors['bg'])
         content.pack(fill='both', expand=True, padx=10, pady=(0, 10))
         
-        yoy_data = [d for d in data if not math.isnan(d.yoy_change_pct) and not math.isinf(d.yoy_change_pct)]
+        # Filter to data points with YoY information
+        yoy_data = [dp for dp in self.data_points 
+                   if not math.isnan(dp.yoy_change_pct) and not math.isinf(dp.yoy_change_pct)]
         
         if yoy_data:
             self._create_yoy_chart(content, yoy_data)
         else:
-            tk.Label(content, text="❌ No YoY Data Available\nNeed at least 4 consecutive quarters for year-over-year comparison",
+            tk.Label(content, text="❌ No YoY Data Available\nNeed at least 4 consecutive quarters for comparison",
                     font=(UI_CONFIG['font_family'], 14), bg=self.colors['bg'], 
                     fg=self.colors['error'], justify='center').pack(expand=True)
     
     def _create_yoy_chart(self, parent: tk.Frame, yoy_data: List[CashflowDataPoint]):
-        """Create YoY matplotlib chart with consistent dark theme formatting"""
+        """Create YoY matplotlib chart with consistent formatting"""
         try:
-            values = [d.yoy_change_pct for d in yoy_data]
-            quarters = [d.quarter_label for d in yoy_data]
-            display_values = [max(-self.YOY_CAP, min(self.YOY_CAP, v)) for v in values]
+            values = [dp.yoy_change_pct for dp in yoy_data]
+            quarters = [dp.quarter_label for dp in yoy_data]
             
-            # Get sizing and fonts to match FCF chart
+            # Cap extreme values for visualization
+            YOY_CAP = 500
+            display_values = [max(-YOY_CAP, min(YOY_CAP, v)) for v in values]
+            
+            # Get sizing and fonts from base chart
             chart_width, chart_height, _, _ = self.get_responsive_size()
             font_sizes = self.get_dynamic_font_sizes(chart_width)
             
             # Create figure with dark theme
             fig, ax = self.create_matplotlib_figure(chart_width, chart_height)
             
-            # Color bars based on change - use consistent color scheme
+            # Color bars based on change
             colors = [self.COLORS['yoy_growth'] if v > 5 else 
                      self.COLORS['yoy_decline'] if v < -5 else 
                      self.COLORS['yoy_neutral'] for v in values]
             
             bars = ax.bar(range(len(quarters)), display_values, color=colors, alpha=0.8, width=0.8)
             
-            # Style chart to match FCF chart formatting
+            # Style chart consistently
             ax.set_title(f'{self.ticker} Year-over-Year FCF Changes', 
                         color=self.colors['header'], fontweight='bold', fontsize=font_sizes['title'])
             ax.set_ylabel('YoY Change (%)', color=self.colors['text'], fontweight='bold', fontsize=font_sizes['label'])
             ax.set_xlabel('Quarter', color=self.colors['text'], fontweight='bold', fontsize=font_sizes['label'])
             
-            # Set labels with consistent rotation
+            # Set labels
             rotation_angle = 45 if len(quarters) > 8 else 30
             ax.set_xticks(range(len(quarters)))
             ax.set_xticklabels(quarters, rotation=rotation_angle, ha='right',
                               color=self.colors['text'], fontsize=font_sizes['tick'])
             
-            # Reference lines with consistent styling (50% for FCF since it's more volatile)
+            # Reference lines
             ax.axhline(y=0, color=self.colors['text'], linestyle='--', alpha=0.5, linewidth=2)
             ax.axhline(y=50, color=self.COLORS['yoy_growth'], linestyle=':', alpha=0.4)
             ax.axhline(y=-50, color=self.COLORS['yoy_decline'], linestyle=':', alpha=0.4)
             
-            # Value labels with consistent styling
+            # Value labels
             for bar, dp in zip(bars, yoy_data):
                 height = bar.get_height()
                 label_y = height + (8 if height >= 0 else -12)
@@ -418,9 +341,9 @@ class CashFlowTab:
             widget.destroy()
         
         tk.Label(self.parent_frame, 
-                text="💰 Select a stock to view Free Cash Flow analysis\n\n📊 Features:\n• Actual quarterly FCF amounts\n• Year-over-Year analysis\n• Interactive tooltips\n• Enhanced scrolling support",
+                text="💰 Select a stock to view Free Cash Flow analysis\n\n📊 Features:\n• Separated data processing\n• Operating CF - CapEx calculation\n• Year-over-Year analysis\n• Interactive tooltips\n• Enhanced scrolling support",
                 font=(UI_CONFIG['font_family'], 12), bg=self.colors['bg'], fg=self.colors['text'], 
                 justify='center').pack(expand=True)
 
 
-print("📊 Enhanced CashFlow Chart loaded with actual quarterly amounts and YoY analysis")
+print("📊 Enhanced CashFlow Chart loaded with separated data processing")

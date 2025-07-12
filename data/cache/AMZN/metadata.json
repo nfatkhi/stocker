@@ -1,0 +1,146 @@
+{
+  "ticker": "AMZN",
+  "company_name": "AMAZON COM INC",
+  "last_updated": "2025-07-12T17:37:44.775252",
+  "cached_quarters": [
+    {
+      "quarter": "Q1",
+      "year": 2025,
+      "filing_date": "2025-05-02",
+      "file_path": "2025_Q1_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:44.807584",
+      "file_size_mb": 0.037845611572265625,
+      "fact_rows_count": 142
+    },
+    {
+      "quarter": "Q4",
+      "year": 2024,
+      "filing_date": "2025-02-07",
+      "file_path": "2024_Q4_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:44.854160",
+      "file_size_mb": 0.04139518737792969,
+      "fact_rows_count": 154
+    },
+    {
+      "quarter": "Q3",
+      "year": 2024,
+      "filing_date": "2024-11-01",
+      "file_path": "2024_Q3_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:44.893343",
+      "file_size_mb": 0.052962303161621094,
+      "fact_rows_count": 198
+    },
+    {
+      "quarter": "Q2",
+      "year": 2024,
+      "filing_date": "2024-08-02",
+      "file_path": "2024_Q2_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:44.929868",
+      "file_size_mb": 0.05295753479003906,
+      "fact_rows_count": 198
+    },
+    {
+      "quarter": "Q1",
+      "year": 2024,
+      "filing_date": "2024-05-01",
+      "file_path": "2024_Q1_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:44.960061",
+      "file_size_mb": 0.03559112548828125,
+      "fact_rows_count": 134
+    },
+    {
+      "quarter": "Q4",
+      "year": 2023,
+      "filing_date": "2024-02-02",
+      "file_path": "2023_Q4_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:45.006796",
+      "file_size_mb": 0.04384899139404297,
+      "fact_rows_count": 161
+    },
+    {
+      "quarter": "Q3",
+      "year": 2023,
+      "filing_date": "2023-10-27",
+      "file_path": "2023_Q3_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:45.043701",
+      "file_size_mb": 0.051067352294921875,
+      "fact_rows_count": 192
+    },
+    {
+      "quarter": "Q2",
+      "year": 2023,
+      "filing_date": "2023-08-04",
+      "file_path": "2023_Q2_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:45.080981",
+      "file_size_mb": 0.051029205322265625,
+      "fact_rows_count": 192
+    },
+    {
+      "quarter": "Q1",
+      "year": 2023,
+      "filing_date": "2023-04-28",
+      "file_path": "2023_Q1_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:45.109732",
+      "file_size_mb": 0.038954734802246094,
+      "fact_rows_count": 128
+    },
+    {
+      "quarter": "Q4",
+      "year": 2022,
+      "filing_date": "2023-02-03",
+      "file_path": "2022_Q4_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:45.153465",
+      "file_size_mb": 0.050148963928222656,
+      "fact_rows_count": 160
+    },
+    {
+      "quarter": "Q3",
+      "year": 2022,
+      "filing_date": "2022-10-28",
+      "file_path": "2022_Q3_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:45.190345",
+      "file_size_mb": 0.060001373291015625,
+      "fact_rows_count": 195
+    },
+    {
+      "quarter": "Q2",
+      "year": 2022,
+      "filing_date": "2022-07-29",
+      "file_path": "2022_Q2_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:45.227279",
+      "file_size_mb": 0.060009002685546875,
+      "fact_rows_count": 195
+    },
+    {
+      "quarter": "Q1",
+      "year": 2022,
+      "filing_date": "2022-04-29",
+      "file_path": "2022_Q1_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:45.255385",
+      "file_size_mb": 0.03969287872314453,
+      "fact_rows_count": 130
+    },
+    {
+      "quarter": "Q4",
+      "year": 2021,
+      "filing_date": "2022-02-04",
+      "file_path": "2021_Q4_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:45.297684",
+      "file_size_mb": 0.047756195068359375,
+      "fact_rows_count": 154
+    },
+    {
+      "quarter": "Q3",
+      "year": 2021,
+      "filing_date": "2021-10-29",
+      "file_path": "2021_Q3_multi_row.json",
+      "cached_timestamp": "2025-07-12T17:37:45.332467",
+      "file_size_mb": 0.056778907775878906,
+      "fact_rows_count": 186
+    }
+  ],
+  "total_quarters_cached": 15,
+  "last_filing_check": "2025-07-12T17:37:44.775254",
+  "latest_cached_filing_date": "2025-05-02",
+  "total_fact_rows": 2519
+}

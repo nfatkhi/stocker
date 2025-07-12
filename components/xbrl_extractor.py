@@ -216,7 +216,7 @@ class MultiRowXBRLExtractor:
         """Extract all fact rows for 49 universal concepts with period_end filtering"""
         
         print(f"🔧 Multi-row extraction for {raw_filing.ticker} - {raw_filing.filing_date}")
-        print(f"📊 Extracting ALL rows for 49 universal concepts with period_end filtering")
+        print(f"📊 Extracting ALL rows for 49 universal concepts with duration-aware period_end filtering")
         
         multi_row_data = MultiRowFinancialData(
             ticker=raw_filing.ticker,
@@ -243,16 +243,16 @@ class MultiRowXBRLExtractor:
             facts_df = pd.DataFrame(facts_data)
             print(f"📊 Processing {len(facts_df)} total facts for 49 universal concepts...")
             
-            # NEW: Find most common period_end across ALL facts for filtering
-            most_common_period_end = self._find_most_common_period_end(facts_df)
+            # NEW: Find most common ACTUAL end date from period_end strings (handling duration format)
+            most_common_end_date = self._find_most_common_period_end(facts_df)
             
-            if most_common_period_end:
-                print(f"🎯 Most common period_end: {most_common_period_end}")
-                print(f"📅 Will filter to this period_end + include null/empty values")
-                multi_row_data.most_common_period_end = most_common_period_end
+            if most_common_end_date:
+                print(f"🎯 Most common actual end date: {most_common_end_date}")
+                print(f"📅 Will filter to this end date + include null/empty values")
+                multi_row_data.most_common_period_end = most_common_end_date
                 multi_row_data.period_end_filtering_applied = True
             else:
-                print(f"⚠️ No common period_end found - extracting all facts (including nulls)")
+                print(f"⚠️ No common end date found - extracting all facts (including nulls)")
                 multi_row_data.period_end_filtering_applied = False
             
             concepts_extracted = 0
@@ -261,7 +261,7 @@ class MultiRowXBRLExtractor:
             # Extract all fact rows for each of the 49 concepts with filtering
             for field_name, xbrl_concept in self.concept_mappings.items():
                 fact_rows = self._extract_all_concept_rows_filtered(
-                    facts_df, xbrl_concept, field_name, most_common_period_end
+                    facts_df, xbrl_concept, field_name, most_common_end_date
                 )
                 
                 if fact_rows:
@@ -284,7 +284,7 @@ class MultiRowXBRLExtractor:
             
             print(f"📊 Multi-row extraction complete:")
             print(f"   Concepts extracted: {concepts_extracted}/49")
-            print(f"   Total fact rows: {total_fact_rows} (filtered to period_end: {most_common_period_end} + nulls)")
+            print(f"   Total fact rows: {total_fact_rows} (filtered to end date: {most_common_end_date} + nulls)")
             print(f"   Success: {multi_row_data.extraction_success}")
             
             return multi_row_data
@@ -296,24 +296,56 @@ class MultiRowXBRLExtractor:
             multi_row_data.extraction_success = False
             return multi_row_data
     
+    def _extract_end_date_from_period(self, period_str: str) -> Optional[str]:
+        """Extract end date from period strings - handles any format with underscore-separated dates"""
+        if not period_str or pd.isna(period_str):
+            return None
+            
+        period_str = str(period_str).strip()
+        
+        # Handle direct dates first (YYYY-MM-DD format)
+        if len(period_str) == 10 and period_str.count('-') == 2:
+            return period_str
+        
+        # Handle any underscore-separated format (any string > 10 chars with underscores)
+        if len(period_str) > 10 and '_' in period_str:
+            parts = period_str.split('_')
+            if len(parts) >= 2:
+                # Check each part from end to start for valid date format
+                for part in reversed(parts):
+                    if len(part) == 10 and part.count('-') == 2:
+                        # Additional validation: check if it looks like a date
+                        try:
+                            year, month, day = part.split('-')
+                            if (len(year) == 4 and year.isdigit() and 
+                                len(month) == 2 and month.isdigit() and 
+                                len(day) == 2 and day.isdigit()):
+                                return part
+                        except:
+                            continue
+        
+        return None
+    
     def _find_most_common_period_end(self, facts_df: pd.DataFrame) -> Optional[str]:
         """
-        Find the most common period_end date across ALL facts in the filing
+        Find the most common ACTUAL end date from period_end column (handling duration strings)
         Note: Ignores null/empty values for determining the main period, but these will still be included
         
         Args:
             facts_df: DataFrame containing all facts
             
         Returns:
-            Most common period_end date string, or None if no valid dates
+            Most common actual end date string, or None if no valid dates
         """
         if 'period_end' not in facts_df.columns:
             print("   ⚠️ No period_end column found in facts DataFrame")
             return None
         
-        # Extract all period_end dates, excluding null/empty values for analysis
-        period_ends = []
+        # Extract all actual end dates, excluding null/empty values for analysis
+        actual_end_dates = []
         null_count = 0
+        duration_count = 0
+        direct_date_count = 0
         
         for _, row in facts_df.iterrows():
             period_end = row.get('period_end')
@@ -325,30 +357,44 @@ class MultiRowXBRLExtractor:
                 null_count += 1
                 continue
             
-            period_ends.append(str(period_end).strip())
+            # Extract actual end date from period string
+            actual_end_date = self._extract_end_date_from_period(str(period_end))
+            
+            if actual_end_date:
+                actual_end_dates.append(actual_end_date)
+                
+                # Track format types for debugging
+                period_str = str(period_end).strip()
+                if period_str.startswith('duration_'):
+                    duration_count += 1
+                else:
+                    direct_date_count += 1
         
-        if not period_ends:
-            print(f"   ⚠️ No valid period_end dates found in facts ({null_count} null/empty values)")
+        if not actual_end_dates:
+            print(f"   ⚠️ No valid end dates found in facts ({null_count} null/empty values)")
             return None
         
-        # Find most common date
-        date_counter = Counter(period_ends)
-        most_common_date, most_common_count = date_counter.most_common(1)[0]
+        # Find most common actual end date
+        date_counter = Counter(actual_end_dates)
+        most_common_end_date, most_common_count = date_counter.most_common(1)[0]
         
-        print(f"   📅 Period_end analysis: {len(date_counter)} unique dates, {null_count} null/empty values")
-        print(f"   🎯 Most common period_end: {most_common_date} ({most_common_count} facts)")
-        print(f"   📊 Null/empty period_end facts: {null_count} (will be included)")
+        print(f"   📅 Period_end analysis:")
+        print(f"      Duration format facts: {duration_count}")
+        print(f"      Direct date facts: {direct_date_count}")
+        print(f"      Null/empty facts: {null_count}")
+        print(f"      Unique end dates: {len(date_counter)}")
+        print(f"   🎯 Most common end date: {most_common_end_date} ({most_common_count} facts)")
         
         if len(date_counter) > 1:
-            print(f"   📊 Other period_end dates found:")
+            print(f"   📊 Other end dates found:")
             for date, count in sorted(date_counter.items(), key=lambda x: x[1], reverse=True)[1:6]:  # Show top 5 others
                 print(f"      {date}: {count} facts")
         
-        return most_common_date
+        return most_common_end_date
     
     def _extract_all_concept_rows_filtered(self, facts_df: pd.DataFrame, xbrl_concept: str, 
-                                         field_name: str, filter_period_end: Optional[str]) -> List[XBRLFactRow]:
-        """Extract ALL fact rows for a specific XBRL concept, filtered by period_end (including null values)"""
+                                         field_name: str, filter_end_date: Optional[str]) -> List[XBRLFactRow]:
+        """Extract ALL fact rows for a specific XBRL concept, filtered by actual end date (including null values)"""
         
         if 'concept' not in facts_df.columns:
             return []
@@ -359,30 +405,32 @@ class MultiRowXBRLExtractor:
         if len(concept_matches) == 0:
             return []
         
-        # NEW: Apply period_end filtering if available, but INCLUDE null/empty values
-        if filter_period_end and 'period_end' in concept_matches.columns:
+        # NEW: Apply end date filtering if available, but INCLUDE null/empty values
+        if filter_end_date and 'period_end' in concept_matches.columns:
             original_count = len(concept_matches)
             
             # Create filter that includes:
-            # 1. Facts matching the most common period_end
-            # 2. Facts with null/empty period_end values (these might be important metadata or instant facts)
-            period_end_filter = (
-                (concept_matches['period_end'] == filter_period_end) |
-                (concept_matches['period_end'].isna()) |
-                (concept_matches['period_end'].isnull()) |
-                (concept_matches['period_end'] == '') |
-                (concept_matches['period_end'] == 'None') |
-                (concept_matches['period_end'] == 'null') |
-                (concept_matches['period_end'] == 'N/A') |
-                (concept_matches['period_end'] == 'nan')
-            )
+            # 1. Facts whose actual end date matches the most common end date
+            # 2. Facts with null/empty period_end values (always included - important metadata)
+            def matches_filter_criteria(period_end_value):
+                # Always include null/empty values (they go in cache but weren't part of filter determination)
+                if pd.isna(period_end_value) or period_end_value is None:
+                    return True
+                
+                period_str = str(period_end_value).strip()
+                if period_str in ['', 'None', 'null', 'N/A', 'nan']:
+                    return True
+                
+                # For non-null values, only include if they match the most common end date
+                actual_end_date = self._extract_end_date_from_period(period_str)
+                return actual_end_date == filter_end_date
             
-            concept_matches = concept_matches[period_end_filter]
+            end_date_filter = concept_matches['period_end'].apply(matches_filter_criteria)
+            concept_matches = concept_matches[end_date_filter]
             filtered_count = len(concept_matches)
-            null_count = original_count - len(facts_df[facts_df['concept'] == xbrl_concept][facts_df[facts_df['concept'] == xbrl_concept]['period_end'] == filter_period_end])
             
             if original_count > filtered_count:
-                print(f"      🎯 {field_name}: Filtered {original_count} → {filtered_count} facts (kept {null_count} null period_end)")
+                print(f"      🎯 {field_name}: Filtered {original_count} → {filtered_count} facts (end date + nulls)")
         
         if len(concept_matches) == 0:
             return []
@@ -481,8 +529,8 @@ def extract_multi_row_financials(raw_filing) -> MultiRowFinancialData:
 
 
 if __name__ == "__main__":
-    print("🧪 Testing Multi-Row XBRL Extractor with Period End Filtering")
-    print("=" * 60)
+    print("🧪 Testing Multi-Row XBRL Extractor with Duration-Aware Period End Filtering")
+    print("=" * 70)
     
     # Test the concept mappings
     extractor = MultiRowXBRLExtractor()
@@ -500,9 +548,18 @@ if __name__ == "__main__":
     for category, concepts in categories.items():
         print(f"   {category}: {len(concepts)} concepts")
     
-    print(f"\n✅ Multi-row extractor ready for 49 universal concepts!")
-    print(f"🎯 NEW: Period_end filtering applied at extraction level")
-    print(f"📅 Most common period_end facts + null/empty period_end facts included")
-    print(f"🔄 Each concept will collect matching fact rows for main period + nulls")
-    print(f"📊 Complete context information preserved for each fact")
-    print(f"💾 Cache files will be cleaner while preserving important null data")
+    # Test the duration parsing function
+    print(f"\n🧪 Testing duration string parsing:")
+    test_cases = [
+        "duration_2024-01-01_2024-12-31",
+        "duration_2024-10-01_2024-12-31", 
+        "2024-12-31",
+        "duration_2023-01-01_2023-12-31",
+        "",
+        None,
+        "invalid_format"
+    ]
+    
+    for test_case in test_cases:
+        result = extractor._extract_end_date_from_period(test_case)
+        print(f"   '{test_case}' → '{result}'")

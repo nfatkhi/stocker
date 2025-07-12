@@ -1,23 +1,42 @@
-# core/app.py - Updated for new cache system integration
+# core/app.py - Updated with Direct Chart Integration (Option A)
 
 import tkinter as tk
+from tkinter import ttk
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 from core.event_system import EventBus, Event, EventType
 from ui.main_window import MainWindow
-from components.cache_manager import CacheManager  # REMOVED: start_background_cache_check
+from components.cache_manager import CacheManager
 from components.analyzer import Analyzer
 from components.news_manager import NewsManager  
 from components.metrics_display import MetricsDisplay
 
-# Import the chart manager
+# REMOVED: Chart manager import - using direct integration
+# ADDED: Direct chart imports
 try:
-    from components.chart_manager import EnhancedChartManager, DirectCacheChartManager
-    CHART_MANAGER_AVAILABLE = True
-    print("✓ Using Enhanced Chart Manager with cache support")
-except ImportError:
-    CHART_MANAGER_AVAILABLE = False
-    print("⚠️ Chart manager not available")
+    from components.charts.revenue.revenue_chart import RevenueTab
+    from components.charts.revenue.revenue_data_processor import get_processed_revenue_data
+    REVENUE_CHARTS_AVAILABLE = True
+    print("✅ Revenue charts loaded for direct integration")
+except ImportError as e:
+    REVENUE_CHARTS_AVAILABLE = False
+    print(f"⚠️ Revenue charts not available: {e}")
+
+try:
+    from components.charts.cashflow.cashflow_chart import CashFlowTab
+    CASHFLOW_CHARTS_AVAILABLE = True
+    print("✅ Cash flow charts loaded for direct integration")
+except ImportError as e:
+    CASHFLOW_CHARTS_AVAILABLE = False
+    print(f"⚠️ Cash flow charts not available: {e}")
+
+try:
+    from components.charts.balance_sheet.balance_sheet_chart import BalanceSheetTab
+    BALANCE_SHEET_CHARTS_AVAILABLE = True
+    print("✅ Balance sheet charts loaded for direct integration")
+except ImportError as e:
+    BALANCE_SHEET_CHARTS_AVAILABLE = False
+    print(f"⚠️ Balance sheet charts not available: {e}")
 
 try:
     from config import APP_CONFIG, EDGARTOOLS_CONFIG
@@ -284,15 +303,15 @@ class CacheDataOrchestrator:
 
 
 class StockerApp:
-    """Main application class with new cache system"""
+    """Main application class with direct chart integration"""
     
     def __init__(self, root: tk.Tk):
-        """Initialize the application with cache system"""
+        """Initialize the application with direct chart integration"""
         self.root = root
         self.event_bus = EventBus()
         
         # Print system status
-        print(f"🚀 Stocker App v{APP_CONFIG.get('version', '2.0')} - Cache System Edition")
+        print(f"🚀 Stocker App v{APP_CONFIG.get('version', '2.0')} - Direct Chart Integration")
         print(f"📊 Raw XBRL cache with EdgarTools integration")
         print(f"📧 SEC Contact: {EDGARTOOLS_CONFIG.get('user_identity')}")
         
@@ -302,7 +321,7 @@ class StockerApp:
         # Initialize components
         print(f"\n🔧 Initializing components...")
         
-        # NEW: Cache data orchestrator (replaces old data fetcher)
+        # Cache data orchestrator (replaces old data fetcher)
         self.cache_orchestrator = CacheDataOrchestrator(self.event_bus)
         print(f"✅ Cache Data Orchestrator: Raw XBRL + Event System")
         
@@ -311,33 +330,20 @@ class StockerApp:
         self.news_manager = NewsManager(self.event_bus)
         self.metrics_display = MetricsDisplay(self.event_bus)
         
-        # Initialize chart manager
-        if CHART_MANAGER_AVAILABLE:
-            try:
-                # Initialize chart manager - will connect to UI later
-                self.chart_manager = EnhancedChartManager(self.event_bus)
-                print("✅ Enhanced Chart Manager: Initialized")
-            except Exception as e:
-                print(f"⚠️ Enhanced chart manager failed: {e}")
-                self.chart_manager = None
-        else:
-            print("❌ Chart manager not available")
-            self.chart_manager = None
+        # REMOVED: Chart manager - using direct integration
+        print(f"📊 Using direct chart integration (no chart manager)")
         
         # Connect components to UI containers
         self._connect_components_to_ui()
         
-        # REMOVED: Background cache updates start - no longer automatic
-        # self.cache_orchestrator.start_background_cache_updates()
-        
         # Print initialization summary
         print(f"\n🎉 StockerApp initialized successfully!")
-        print(f"📊 Architecture: Cache Manager → XBRL Data → Event System → Charts")
-        print(f"⚡ Performance: Fast cache loading with on-demand updates")
+        print(f"📊 Architecture: Cache Manager → XBRL Data → Direct Charts")
+        print(f"⚡ Performance: Fast cache loading with direct chart updates")
         print(f"🔄 Background: Cache updates only when needed")
         
     def _connect_components_to_ui(self):
-        """Connect components to their UI containers"""
+        """Connect components to their UI containers - UPDATED for direct integration"""
         try:
             overview_frame = self.main_window.tab_manager.get_tab_frame('Overview')
             charts_frame = self.main_window.tab_manager.get_tab_frame('Charts')
@@ -349,13 +355,13 @@ class StockerApp:
                 self.metrics_display.set_container(overview_frame)
                 print("✅ Metrics display → Overview tab")
             
-            # Connect chart manager to Financials tab
-            if financials_frame and self.chart_manager:
+            # DIRECT CHART INTEGRATION - Replace chart manager
+            if financials_frame:
                 try:
-                    self.chart_manager.set_container('Financials', financials_frame)
-                    print("✅ Chart manager → Financials tab (cache-powered)")
+                    self._setup_direct_financial_charts(financials_frame)
+                    print("✅ Direct charts → Financials tab")
                 except Exception as e:
-                    print(f"⚠️ Error connecting chart manager: {e}")
+                    print(f"⚠️ Error setting up direct charts: {e}")
                     self._setup_financials_placeholder(financials_frame)
             
             if analysis_frame and self.analyzer:
@@ -380,6 +386,154 @@ class StockerApp:
         except Exception as e:
             print(f"⚠️ Error connecting components to UI: {e}")
     
+    def _setup_direct_financial_charts(self, financials_frame: tk.Frame):
+        """Setup direct financial charts without chart manager"""
+        # Clear existing content
+        for widget in financials_frame.winfo_children():
+            widget.destroy()
+        
+        # Create notebook for financial chart tabs
+        self.financials_notebook = ttk.Notebook(financials_frame)
+        self.financials_notebook.pack(fill='both', expand=True, padx=5, pady=5)
+        
+        # Create individual chart tabs
+        self.chart_tabs = {}
+        
+        # Revenue Tab
+        if REVENUE_CHARTS_AVAILABLE:
+            revenue_frame = tk.Frame(self.financials_notebook, bg='#2b2b2b')
+            self.chart_tabs['revenue'] = RevenueTab(revenue_frame)
+            self.chart_tabs['revenue'].show_placeholder()
+            self.financials_notebook.add(revenue_frame, text='📈 Revenue')
+            print("   ✅ Revenue tab created directly")
+        
+        # Cash Flow Tab
+        if CASHFLOW_CHARTS_AVAILABLE:
+            cashflow_frame = tk.Frame(self.financials_notebook, bg='#2b2b2b')
+            self.chart_tabs['cashflow'] = CashFlowTab(cashflow_frame)
+            self.chart_tabs['cashflow'].show_placeholder()
+            self.financials_notebook.add(cashflow_frame, text='💰 Cash Flow')
+            print("   ✅ Cash flow tab created directly")
+        
+        # Balance Sheet Tab
+        if BALANCE_SHEET_CHARTS_AVAILABLE:
+            balance_sheet_frame = tk.Frame(self.financials_notebook, bg='#2b2b2b')
+            self.chart_tabs['balance_sheet'] = BalanceSheetTab(balance_sheet_frame)
+            self.chart_tabs['balance_sheet'].show_placeholder()
+            self.financials_notebook.add(balance_sheet_frame, text='📊 Balance Sheet')
+            print("   ✅ Balance sheet tab created directly")
+        
+        # Subscribe to data events for direct updates
+        self.event_bus.subscribe(EventType.DATA_RECEIVED, self._update_direct_charts)
+        
+        print(f"📊 Direct financial charts setup complete - {len(self.chart_tabs)} tabs")
+    
+    def _update_direct_charts(self, event):
+        """Update charts directly when data is received"""
+        try:
+            data = event.data
+            stock_data = data.get('stock_data')
+            metadata = data.get('metadata', {})
+            
+            if not stock_data:
+                print("⚠️ No stock data in event for chart updates")
+                return
+            
+            ticker = stock_data.ticker
+            print(f"📊 Updating direct charts for {ticker}")
+            
+            # Get cache data for processing
+            quarterly_data, cache_metadata = self.cache_orchestrator.cache_manager.get_ticker_data(ticker)
+            all_quarters_data, _ = self.cache_orchestrator.cache_manager.get_ticker_data_for_calculation(ticker)
+            
+            if not quarterly_data:
+                print("   ❌ No cache data available for chart updates")
+                return
+            
+            # Update Revenue Tab
+            if 'revenue' in self.chart_tabs and REVENUE_CHARTS_AVAILABLE:
+                try:
+                    # Process revenue data
+                    processed_display_revenue = get_processed_revenue_data(quarterly_data)
+                    processed_all_revenue = get_processed_revenue_data(all_quarters_data)
+                    
+                    if processed_display_revenue:
+                        self.chart_tabs['revenue'].update_data(
+                            financial_data=processed_display_revenue,
+                            ticker=ticker,
+                            data_source_info={
+                                'metadata': cache_metadata,
+                                'data_source': 'Direct Cache → Revenue Processor',
+                                'q4_calculation_enabled': True
+                            },
+                            all_quarters_data=processed_all_revenue
+                        )
+                        print("   ✅ Revenue tab updated directly")
+                    
+                except Exception as e:
+                    print(f"   ❌ Revenue tab update error: {e}")
+            
+            # Update Cash Flow Tab
+            if 'cashflow' in self.chart_tabs and CASHFLOW_CHARTS_AVAILABLE:
+                try:
+                    # Convert cache data to MultiRowFinancialData objects
+                    financial_data_objects = self._convert_cache_to_financial_objects(quarterly_data)
+                    
+                    if financial_data_objects:
+                        self.chart_tabs['cashflow'].update_data(
+                            financial_data=financial_data_objects,
+                            ticker=ticker,
+                            data_source_info={
+                                'metadata': cache_metadata,
+                                'data_source': 'Direct Cache → Cash Flow Processor'
+                            }
+                        )
+                        print("   ✅ Cash flow tab updated directly")
+                    
+                except Exception as e:
+                    print(f"   ❌ Cash flow tab update error: {e}")
+            
+            # Update Balance Sheet Tab
+            if 'balance_sheet' in self.chart_tabs and BALANCE_SHEET_CHARTS_AVAILABLE:
+                try:
+                    # Convert cache data to MultiRowFinancialData objects
+                    financial_data_objects = self._convert_cache_to_financial_objects(quarterly_data)
+                    
+                    if financial_data_objects:
+                        self.chart_tabs['balance_sheet'].update_data(
+                            financial_data=financial_data_objects,
+                            ticker=ticker,
+                            data_source_info={
+                                'metadata': cache_metadata,
+                                'data_source': 'Direct Cache → Balance Sheet Processor'
+                            }
+                        )
+                        print("   ✅ Balance sheet tab updated directly")
+                    
+                except Exception as e:
+                    print(f"   ❌ Balance sheet tab update error: {e}")
+            
+        except Exception as e:
+            print(f"❌ Error updating direct charts: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def _convert_cache_to_financial_objects(self, cache_quarters: List[Dict]) -> List[Any]:
+        """Convert cache data to MultiRowFinancialData objects"""
+        try:
+            from components.xbrl_extractor import MultiRowFinancialData
+            
+            converted_data = []
+            for quarter_dict in cache_quarters:
+                financial_data = MultiRowFinancialData.from_dict(quarter_dict)
+                converted_data.append(financial_data)
+            
+            return converted_data
+            
+        except Exception as e:
+            print(f"   ❌ Error converting cache data: {e}")
+            return []
+    
     def _setup_basic_charts_tab(self, charts_frame: tk.Frame):
         """Setup basic charts tab with placeholder content"""
         for widget in charts_frame.winfo_children():
@@ -392,7 +546,7 @@ class StockerApp:
                  "• Price charts\n" +
                  "• Technical analysis\n" +
                  "• Custom visualizations\n\n" +
-                 "💡 Financial charts (Revenue/FCF) are in the Financials tab",
+                 "💡 Financial charts (Revenue/FCF/Balance Sheet) are in the Financials tab",
             font=('Arial', 12),
             bg='#f0f0f0',
             fg='#666666',
@@ -401,17 +555,18 @@ class StockerApp:
         placeholder_label.pack(expand=True)
     
     def _setup_financials_placeholder(self, financials_frame: tk.Frame):
-        """Setup placeholder for financials tab if chart manager fails"""
+        """Setup placeholder for financials tab if direct charts fail"""
         for widget in financials_frame.winfo_children():
             widget.destroy()
         
         placeholder_label = tk.Label(
             financials_frame,
             text="📊 Financial Analysis\n\n" +
-                 "⚠️ Chart manager not available\n" +
+                 "⚠️ Direct charts not available\n" +
                  "Please check:\n" +
-                 "• components/chart_manager.py exists\n" +
-                 "• components/charts/ directory exists\n" +
+                 "• components/charts/revenue/ exists\n" +
+                 "• components/charts/cashflow/ exists\n" +
+                 "• components/charts/balance_sheet/ exists\n" +
                  "• All chart dependencies installed\n\n" +
                  "Data extraction is working, but charts need setup.",
             font=('Arial', 12),
@@ -425,15 +580,21 @@ class StockerApp:
         """Get application status for debugging"""
         status = {
             'app_version': APP_CONFIG.get('version', '2.0'),
+            'architecture': 'direct_chart_integration',
             'components_initialized': {
                 'cache_orchestrator': self.cache_orchestrator is not None,
-                'chart_manager': self.chart_manager is not None,
+                'direct_charts': hasattr(self, 'chart_tabs'),
                 'analyzer': self.analyzer is not None,
                 'metrics_display': self.metrics_display is not None,
                 'news_manager': self.news_manager is not None
             },
+            'charts_available': {
+                'revenue': REVENUE_CHARTS_AVAILABLE,
+                'cashflow': CASHFLOW_CHARTS_AVAILABLE,
+                'balance_sheet': BALANCE_SHEET_CHARTS_AVAILABLE
+            },
             'cache_system': 'new_xbrl_cache',
-            'background_updates': 'on_demand_only'
+            'chart_integration': 'direct_no_manager'
         }
         
         # Get cache status
@@ -444,6 +605,6 @@ class StockerApp:
     
     def run(self):
         """Start the application"""
-        print("🚀 Starting Stocker with new cache system...")
-        print("📊 Raw XBRL data will be cached and processed on demand!")
+        print("🚀 Starting Stocker with direct chart integration...")
+        print("📊 Raw XBRL data will be cached and processed directly to charts!")
         self.root.mainloop()

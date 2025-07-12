@@ -1,9 +1,11 @@
 {
   "tickers": [
     "ADAP",
-    "NVDA"
+    "NVDA",
+    "COMM",
+    "AMZN"
   ],
-  "total_tickers": 2,
-  "last_global_update": "2025-07-11T21:38:52.514492",
+  "total_tickers": 4,
+  "last_global_update": "2025-07-12T17:37:44.775701",
   "cache_format_version": "3.0_revenue_concepts"
 }
