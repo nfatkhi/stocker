@@ -1,0 +1,146 @@
+{
+  "ticker": "NVDA",
+  "company_name": "NVIDIA CORP",
+  "last_updated": "2025-07-11T22:07:21.631202",
+  "cached_quarters": [
+    {
+      "quarter": "Q1",
+      "year": 2026,
+      "filing_date": "2025-05-28",
+      "file_path": "2026_Q1_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:21.679041",
+      "file_size_mb": 0.03225421905517578,
+      "fact_rows_count": 126
+    },
+    {
+      "quarter": "Q4",
+      "year": 2025,
+      "filing_date": "2025-02-26",
+      "file_path": "2025_Q4_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:21.738849",
+      "file_size_mb": 0.03526782989501953,
+      "fact_rows_count": 139
+    },
+    {
+      "quarter": "Q3",
+      "year": 2025,
+      "filing_date": "2024-11-20",
+      "file_path": "2025_Q3_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:21.792700",
+      "file_size_mb": 0.04948902130126953,
+      "fact_rows_count": 193
+    },
+    {
+      "quarter": "Q2",
+      "year": 2025,
+      "filing_date": "2024-08-28",
+      "file_path": "2025_Q2_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:21.846156",
+      "file_size_mb": 0.05042743682861328,
+      "fact_rows_count": 197
+    },
+    {
+      "quarter": "Q1",
+      "year": 2025,
+      "filing_date": "2024-05-29",
+      "file_path": "2025_Q1_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:21.892132",
+      "file_size_mb": 0.034020423889160156,
+      "fact_rows_count": 133
+    },
+    {
+      "quarter": "Q4",
+      "year": 2024,
+      "filing_date": "2024-02-21",
+      "file_path": "2024_Q4_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:21.950839",
+      "file_size_mb": 0.036339759826660156,
+      "fact_rows_count": 143
+    },
+    {
+      "quarter": "Q3",
+      "year": 2024,
+      "filing_date": "2023-11-21",
+      "file_path": "2024_Q3_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:22.003314",
+      "file_size_mb": 0.04965782165527344,
+      "fact_rows_count": 193
+    },
+    {
+      "quarter": "Q2",
+      "year": 2024,
+      "filing_date": "2023-08-28",
+      "file_path": "2024_Q2_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:22.055051",
+      "file_size_mb": 0.0500640869140625,
+      "fact_rows_count": 195
+    },
+    {
+      "quarter": "Q1",
+      "year": 2024,
+      "filing_date": "2023-05-26",
+      "file_path": "2024_Q1_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:22.097853",
+      "file_size_mb": 0.037629127502441406,
+      "fact_rows_count": 127
+    },
+    {
+      "quarter": "Q4",
+      "year": 2023,
+      "filing_date": "2023-02-24",
+      "file_path": "2023_Q4_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:22.155962",
+      "file_size_mb": 0.040457725524902344,
+      "fact_rows_count": 138
+    },
+    {
+      "quarter": "Q3",
+      "year": 2023,
+      "filing_date": "2022-11-18",
+      "file_path": "2023_Q3_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:22.205391",
+      "file_size_mb": 0.057517051696777344,
+      "fact_rows_count": 193
+    },
+    {
+      "quarter": "Q2",
+      "year": 2023,
+      "filing_date": "2022-08-31",
+      "file_path": "2023_Q2_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:22.254904",
+      "file_size_mb": 0.05750560760498047,
+      "fact_rows_count": 193
+    },
+    {
+      "quarter": "Q1",
+      "year": 2023,
+      "filing_date": "2022-05-27",
+      "file_path": "2023_Q1_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:22.296832",
+      "file_size_mb": 0.03733062744140625,
+      "fact_rows_count": 126
+    },
+    {
+      "quarter": "Q4",
+      "year": 2022,
+      "filing_date": "2022-03-18",
+      "file_path": "2022_Q4_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:22.352506",
+      "file_size_mb": 0.04105663299560547,
+      "fact_rows_count": 138
+    },
+    {
+      "quarter": "Q3",
+      "year": 2022,
+      "filing_date": "2021-11-22",
+      "file_path": "2022_Q3_multi_row.json",
+      "cached_timestamp": "2025-07-11T22:07:22.402848",
+      "file_size_mb": 0.06219482421875,
+      "fact_rows_count": 208
+    }
+  ],
+  "total_quarters_cached": 15,
+  "last_filing_check": "2025-07-11T22:07:21.631203",
+  "latest_cached_filing_date": "2025-05-28",
+  "total_fact_rows": 2442
+}

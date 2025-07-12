@@ -1,0 +1,65 @@
+{
+  "ticker": "ADAP",
+  "company_name": "Adaptimmune Therapeutics PLC",
+  "export_timestamp": "2025-06-28T21:33:49.584198",
+  "quarters_exported": 8,
+  "data_source": "SEC EDGAR via EdgarTools",
+  "filings_info": [
+    {
+      "quarter": "Q2",
+      "year": 2025,
+      "filing_date": "2025-05-13",
+      "facts_count": 630,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q4",
+      "year": 2024,
+      "filing_date": "2024-11-13",
+      "facts_count": 873,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q3",
+      "year": 2024,
+      "filing_date": "2024-08-12",
+      "facts_count": 752,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q2",
+      "year": 2024,
+      "filing_date": "2024-05-15",
+      "facts_count": 526,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q4",
+      "year": 2023,
+      "filing_date": "2023-11-08",
+      "facts_count": 803,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q3",
+      "year": 2023,
+      "filing_date": "2023-08-09",
+      "facts_count": 744,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q2",
+      "year": 2023,
+      "filing_date": "2023-05-12",
+      "facts_count": 489,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q4",
+      "year": 2022,
+      "filing_date": "2022-11-08",
+      "facts_count": 655,
+      "extraction_success": true
+    }
+  ]
+}

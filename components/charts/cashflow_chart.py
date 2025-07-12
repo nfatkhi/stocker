@@ -1,4 +1,4 @@
-# components/charts/cashflow_chart.py - Streamlined FCF chart with enhanced trackpad scrolling
+# components/charts/cashflow_chart.py - FCF chart with actual quarterly amounts and YoY analysis
 
 import tkinter as tk
 from tkinter import ttk
@@ -27,7 +27,7 @@ class CashflowDataPoint(NamedTuple):
 
 
 class CashFlowChart(FinancialBarChart):
-    """FCF chart with YoY analysis and enhanced scrolling"""
+    """FCF chart with YoY analysis and actual quarterly amounts"""
     
     MAX_QUARTERS = 12
     YOY_CAP = 500
@@ -58,17 +58,81 @@ class CashFlowChart(FinancialBarChart):
         return self._create_scrollable_layout(processed_data)
     
     def _process_data(self, raw_data: List[Any]) -> List[CashflowDataPoint]:
-        """Process raw data into structured format with YoY calculations"""
+        """Process raw data into structured format with YoY calculations - CONVERT CUMULATIVE TO ACTUAL"""
+        print(f"🔄 Processing {len(raw_data)} quarters - Converting cumulative to actual quarterly amounts")
+        
+        # DEBUG: Show raw data first
+        print(f"🔍 DEBUG: Raw FCF data sample:")
+        for i, item in enumerate(raw_data[:3]):
+            fcf = getattr(item, 'cash', 0)
+            date = getattr(item, 'date', 'no-date')
+            print(f"   {i+1}. Date: {date}, FCF: ${fcf/1e6:.1f}M")
+        
+        # STEP 1: Convert cumulative quarterly data to actual quarterly amounts  
+        conversion_success = False
+        try:
+            # Try multiple import paths
+            try:
+                from .quarterly_converter import convert_financial_data_to_actual_quarters
+                print(f"✅ SUCCESS: Imported from .quarterly_converter")
+            except ImportError:
+                try:
+                    from components.charts.quarterly_converter import convert_financial_data_to_actual_quarters
+                    print(f"✅ SUCCESS: Imported from components.charts.quarterly_converter")
+                except ImportError:
+                    raise ImportError("Cannot import quarterly_converter from any path")
+            
+            # Try conversion
+            print(f"🔄 Attempting conversion of {len(raw_data[:self.MAX_QUARTERS])} quarters...")
+            converted_data = convert_financial_data_to_actual_quarters(raw_data[:self.MAX_QUARTERS])
+            conversion_success = True
+            print(f"✅ CONVERSION SUCCESS: Got {len(converted_data)} converted quarters")
+            
+            # DEBUG: Show converted data
+            print(f"🔍 DEBUG: Converted FCF data sample:")
+            for i, item in enumerate(converted_data[:3]):
+                fcf = getattr(item, 'cash', 0)
+                date = getattr(item, 'date', 'no-date')
+                is_actual = getattr(item, 'is_actual_quarterly', False)
+                print(f"   {i+1}. Date: {date}, FCF: ${fcf/1e6:.1f}M, Actual: {is_actual}")
+                
+        except Exception as e:
+            print(f"❌ CONVERSION FAILED: {e}")
+            print(f"⚠️ Using raw data (will show cumulative amounts)")
+            converted_data = raw_data[:self.MAX_QUARTERS]
+        
+        # Pass conversion success to chart creation
+        self.conversion_success = conversion_success
+        
         data_points = []
         
-        # Extract FCF data
-        for financial in reversed(raw_data[:self.MAX_QUARTERS]):
+        # Extract FCF data from converted (actual quarterly) data
+        for financial in reversed(converted_data):
             fcf = float(financial.cash) if hasattr(financial, 'cash') and financial.cash != 0 else float('nan')
+            
+            # Add indicator if this is actual quarterly data
+            is_actual = getattr(financial, 'is_actual_quarterly', False)
+            
+            # Use XBRL quarter information if available, otherwise parse date
+            xbrl_quarter = getattr(financial, 'document_fiscal_period_focus', None)
+            xbrl_year = getattr(financial, 'document_fiscal_year_focus', None)
+            
+            if xbrl_quarter and xbrl_year:
+                quarter_label = f"{xbrl_year}{xbrl_quarter}"
+                print(f"   📋 Using XBRL quarter: {quarter_label}")
+            else:
+                quarter_label = self.parse_quarter_label(financial.date)
+                print(f"   📅 Using parsed quarter: {quarter_label}")
+            
             data_points.append(CashflowDataPoint(
-                quarter_label=self.parse_quarter_label(financial.date),
+                quarter_label=quarter_label,
                 date=financial.date,
                 fcf_dollars=fcf
             ))
+            
+            if not math.isnan(fcf):
+                actual_indicator = " (Actual Q)" if is_actual else " (Raw)"
+                print(f"   💰 {quarter_label}: ${fcf/1e6:.1f}M{actual_indicator}")
         
         # Calculate YoY changes (compare with same quarter previous year)
         processed = []
@@ -183,7 +247,7 @@ class CashFlowChart(FinancialBarChart):
                 recent_growth = f"{avg_yoy:+.1f}%"
         
         metrics = [
-            ("Data Source", "Polygon.io", '#1976D2'),
+            ("Data Source", "SEC EDGAR", '#1976D2'),
             ("Latest FCF", f"${latest_fcf/1e6:.1f}M", self.colors['success']),
             ("Average FCF", f"${avg_fcf/1e6:.1f}M", self.colors['accent']),
             ("YoY Growth", recent_growth, '#2E7D32' if recent_growth != "N/A" and "+" in recent_growth else self.colors['warning'])
@@ -203,7 +267,11 @@ class CashFlowChart(FinancialBarChart):
         frame.pack(fill='both', expand=True, pady=(0, 10))
         frame.pack_propagate(False)
         
-        tk.Label(frame, text="Free Cash Flow Trend", font=(UI_CONFIG['font_family'], 14, 'bold'),
+        conversion_success = getattr(self, 'conversion_success', False)
+        title_suffix = "(Actual Amounts)" if conversion_success else "(Raw Data - May Be Cumulative)"
+        
+        tk.Label(frame, text=f"Free Cash Flow Trend {title_suffix}", 
+                font=(UI_CONFIG['font_family'], 14, 'bold'),
                 bg=self.colors['frame'], fg=self.colors['header']).pack(pady=(10, 5))
         
         content = tk.Frame(frame, bg=self.colors['bg'])
@@ -350,9 +418,9 @@ class CashFlowTab:
             widget.destroy()
         
         tk.Label(self.parent_frame, 
-                text="💰 Select a stock to view Free Cash Flow analysis\n\n📊 Features:\n• FCF trend chart\n• Year-over-Year analysis\n• Interactive tooltips\n• Enhanced scrolling support",
+                text="💰 Select a stock to view Free Cash Flow analysis\n\n📊 Features:\n• Actual quarterly FCF amounts\n• Year-over-Year analysis\n• Interactive tooltips\n• Enhanced scrolling support",
                 font=(UI_CONFIG['font_family'], 12), bg=self.colors['bg'], fg=self.colors['text'], 
                 justify='center').pack(expand=True)
 
 
-print("📊 Enhanced CashFlow Chart loaded with YoY analysis and optimized scrolling")
+print("📊 Enhanced CashFlow Chart loaded with actual quarterly amounts and YoY analysis")

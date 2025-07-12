@@ -1,4 +1,4 @@
-# components/financials_manager.py - UPDATED: Separated Data Routing Architecture
+# components/financials_manager.py - Simplified for EdgarTools only
 
 import tkinter as tk
 from tkinter import ttk
@@ -6,24 +6,22 @@ from typing import List, Optional, Dict, Any
 
 from core.event_system import EventBus, Event, EventType
 
-# Import chart components with relative imports
+# Import chart components
 try:
     from .charts.revenue_chart import RevenueTab
     from .charts.cashflow_chart import CashFlowTab
     CHARTS_AVAILABLE = True
 except ImportError:
-    # Fallback if charts not available
     CHARTS_AVAILABLE = False
-    print("⚠️ Chart components not available, using fallback mode")
+    print("⚠️ Chart components not available")
 
-# Try to import models from different possible locations
+# Try to import models
 try:
     from models import QuarterlyFinancials
 except ImportError:
     try:
         from core.models import QuarterlyFinancials
     except ImportError:
-        # Create basic model if none exists
         from dataclasses import dataclass
         
         @dataclass
@@ -54,16 +52,14 @@ except ImportError:
 
 class FinancialsManager:
     """
-    SEPARATED DATA ROUTING: Financial Analysis Manager
+    SIMPLIFIED EDGARTOOLS: Financial Analysis Manager
     
-    Routes FCF data (Polygon.io) to cashflow_chart
-    Routes Revenue data (SEC EDGAR) to revenue_chart
-    Fetches data when tabs are activated
+    Single data source: EdgarTools for both FCF and Revenue
+    Simplified architecture without complex data routing
     """
     
     def __init__(self, parent=None, event_bus=None, **kwargs):
-        """Initialize with flexible arguments to match existing interface"""
-        # Handle different argument patterns
+        """Initialize with flexible arguments"""
         self.parent_frame = parent or kwargs.get('parent_frame')
         self.event_bus = event_bus or kwargs.get('event_bus')
         
@@ -72,15 +68,14 @@ class FinancialsManager:
         
         # Current state
         self.current_ticker = ""
-        self.current_fcf_data = []      # FCF data from Polygon.io
-        self.current_revenue_data = []  # Revenue data from SEC EDGAR
-        self.data_source_info = {}      # Information about data sources
+        self.current_financial_data = []  # All financial data from EdgarTools
+        self.data_source_info = {}
         
         # Data availability flags
         self.fcf_data_available = False
         self.revenue_data_available = False
         
-        # Color scheme for consistency
+        # Color scheme
         self.colors = {
             'bg': '#2b2b2b',
             'frame': '#3c3c3c',
@@ -106,10 +101,9 @@ class FinancialsManager:
         self._setup_ui()
         
         if CHARTS_AVAILABLE:
-            print("📊 SEPARATED DATA ROUTING: Financials Manager initialized")
-            print("   💰 FCF data -> cashflow_chart (Polygon.io)")
-            print("   📈 Revenue data -> revenue_chart (SEC EDGAR)")
-            print("   🔄 Lazy loading: Data fetched when tabs activated")
+            print("📊 SIMPLIFIED EDGARTOOLS: Financials Manager initialized")
+            print("   📈 Single source: EdgarTools for all financial data")
+            print("   🎯 Simplified architecture - no complex data routing")
         else:
             print("📊 Basic Financials Manager initialized - chart components not available")
     
@@ -133,7 +127,7 @@ class FinancialsManager:
         
         header_label = tk.Label(
             header_frame,
-            text="📊 Financial Analysis - Separated Data Sources",
+            text="📊 Financial Analysis - EdgarTools (SEC EDGAR)",
             font=(UI_CONFIG['font_family'], 16, 'bold'),
             bg=self.colors['bg'],
             fg=self.colors['header']
@@ -143,7 +137,7 @@ class FinancialsManager:
         # Data source indicator
         self.data_source_label = tk.Label(
             header_frame,
-            text="💰 FCF: Polygon.io | 📈 Revenue: SEC EDGAR",
+            text="📈 Single Source: EdgarTools (SEC EDGAR)",
             font=(UI_CONFIG['font_family'], 10),
             bg=self.colors['bg'],
             fg=self.colors['accent']
@@ -161,9 +155,9 @@ class FinancialsManager:
         self.revenue_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
         self.cashflow_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
         
-        # Add tabs to notebook with enhanced labels
-        self.notebook.add(self.revenue_frame, text='📈 Revenue (SEC EDGAR)')
-        self.notebook.add(self.cashflow_frame, text='💰 Free Cash Flow (Polygon.io)')
+        # Add tabs to notebook
+        self.notebook.add(self.revenue_frame, text='📈 Revenue (EdgarTools)')
+        self.notebook.add(self.cashflow_frame, text='💰 Free Cash Flow (EdgarTools)')
         
         # Initialize tab components
         self.revenue_tab = RevenueTab(self.revenue_frame)
@@ -177,7 +171,7 @@ class FinancialsManager:
         """Setup fallback UI when chart components are not available"""
         tk.Label(
             self.parent_frame,
-            text="📊 Financial Analysis\n\n⚠️ Chart components not available\nPlease ensure components/charts/ directory exists with required files:\n\n• base_chart.py\n• revenue_chart.py\n• cashflow_chart.py\n• __init__.py",
+            text="📊 Financial Analysis - EdgarTools\n\n⚠️ Chart components not available\nPlease ensure components/charts/ directory exists with required files:\n\n• base_chart.py\n• revenue_chart.py\n• cashflow_chart.py\n• __init__.py",
             font=(UI_CONFIG['font_family'], 12),
             bg=self.colors['bg'],
             fg=self.colors['warning'],
@@ -185,7 +179,7 @@ class FinancialsManager:
         ).pack(expand=True)
     
     def on_data_received(self, event):
-        """Handle separated data received from data fetcher"""
+        """Handle data received from EdgarTools data fetcher"""
         data = event.data
         stock_data = data.get('stock_data')
         
@@ -193,56 +187,57 @@ class FinancialsManager:
             print("❌ No stock data received")
             return
         
-        # Extract separated data
         self.current_ticker = stock_data.ticker
         approach = data.get('approach', 'unknown')
         
-        print(f"\n🔄 SEPARATED DATA ROUTING for {self.current_ticker}")
+        print(f"\n🔄 EDGARTOOLS DATA RECEIVED for {self.current_ticker}")
         print("=" * 60)
         
-        if approach == 'separated':
+        if approach == 'edgartools_unified':
             # ========================================
-            # SEPARATED DATA APPROACH - NEW ROUTING
+            # EDGARTOOLS UNIFIED APPROACH
             # ========================================
             
-            # Extract separated datasets
-            self.current_fcf_data = data.get('fcf_data', [])
-            self.current_revenue_data = data.get('revenue_data', [])
+            # Get all financial data from EdgarTools
+            self.current_financial_data = stock_data.quarterly_financials
+            
+            # Extract revenue and FCF data
+            revenue_data = data.get('revenue_data', [])
+            fcf_data = data.get('fcf_data', [])
+            
             self.data_source_info = {
-                'fcf_source': data.get('fcf_source', 'Unknown'),
-                'revenue_source': data.get('revenue_source', 'Unknown'),
-                'fcf_quarters': data.get('fcf_quarters', 0),
-                'revenue_quarters': data.get('revenue_quarters', 0),
-                'approach': approach
+                'source': 'EdgarTools',
+                'total_quarters': len(self.current_financial_data),
+                'revenue_quarters': len(revenue_data),
+                'fcf_quarters': len(fcf_data),
+                'approach': approach,
+                'metadata': data.get('metadata', {})
             }
             
             # Update availability flags
-            self.fcf_data_available = len(self.current_fcf_data) > 0
-            self.revenue_data_available = len(self.current_revenue_data) > 0
+            self.fcf_data_available = len(fcf_data) > 0
+            self.revenue_data_available = len(revenue_data) > 0
             
-            print(f"📊 Separated data received:")
-            print(f"   💰 FCF data: {len(self.current_fcf_data)} quarters ({self.data_source_info['fcf_source']})")
-            print(f"   📈 Revenue data: {len(self.current_revenue_data)} quarters ({self.data_source_info['revenue_source']})")
-            print(f"   ✅ FCF available: {self.fcf_data_available}")
+            print(f"📊 EdgarTools unified data:")
+            print(f"   📈 Total quarters: {len(self.current_financial_data)}")
+            print(f"   💰 Revenue quarters: {len(revenue_data)}")
+            print(f"   💸 FCF quarters: {len(fcf_data)}")
             print(f"   ✅ Revenue available: {self.revenue_data_available}")
+            print(f"   ✅ FCF available: {self.fcf_data_available}")
             
-            # Check for recent data
-            if self.current_fcf_data:
-                recent_fcf = [q for q in self.current_fcf_data if q.date.startswith('2024') or q.date.startswith('2025')]
-                if recent_fcf:
-                    print(f"   🎉 Recent FCF data: {len(recent_fcf)} quarters (2024-2025)!")
+            # Store separated data for tabs
+            self.revenue_data = revenue_data
+            self.fcf_data = fcf_data
             
             # Reset tab loading states
             self.tab_data_loaded = {'revenue': False, 'cashflow': False}
             
             # Update data source indicator
             if CHARTS_AVAILABLE and hasattr(self, 'data_source_label'):
-                fcf_status = "✅" if self.fcf_data_available else "❌"
-                revenue_status = "✅" if self.revenue_data_available else "❌"
-                
+                status = "✅" if (self.revenue_data_available and self.fcf_data_available) else "⚠️"
                 self.data_source_label.config(
-                    text=f"💰 FCF: {fcf_status} Polygon.io | 📈 Revenue: {revenue_status} SEC EDGAR",
-                    fg=self.colors['success'] if (self.fcf_data_available and self.revenue_data_available) else self.colors['warning']
+                    text=f"{status} EdgarTools: {len(self.current_financial_data)} quarters",
+                    fg=self.colors['success'] if (self.revenue_data_available and self.fcf_data_available) else self.colors['warning']
                 )
             
             # Load data for currently active tab
@@ -250,26 +245,28 @@ class FinancialsManager:
             
         else:
             # ========================================
-            # FALLBACK TO COMBINED APPROACH
+            # FALLBACK FOR OTHER APPROACHES
             # ========================================
             
-            print(f"⚠️ Using fallback combined approach for {self.current_ticker}")
+            print(f"⚠️ Unexpected approach: {approach}")
             
-            quarterly_financials = stock_data.quarterly_financials
+            # Try to work with whatever data we have
+            self.current_financial_data = stock_data.quarterly_financials or []
             
-            # Try to separate the combined data based on content
-            self.current_fcf_data = [q for q in quarterly_financials if q.cash != 0]
-            self.current_revenue_data = [q for q in quarterly_financials if q.revenue > 0]
+            # Extract what we can
+            revenue_data = [q for q in self.current_financial_data if hasattr(q, 'revenue') and q.revenue > 0]
+            fcf_data = [q for q in self.current_financial_data if hasattr(q, 'cash') and q.cash != 0]
             
-            self.fcf_data_available = len(self.current_fcf_data) > 0
-            self.revenue_data_available = len(self.current_revenue_data) > 0
+            self.revenue_data = revenue_data
+            self.fcf_data = fcf_data
+            
+            self.revenue_data_available = len(revenue_data) > 0
+            self.fcf_data_available = len(fcf_data) > 0
             
             self.data_source_info = {
-                'fcf_source': 'Combined',
-                'revenue_source': 'Combined', 
-                'fcf_quarters': len(self.current_fcf_data),
-                'revenue_quarters': len(self.current_revenue_data),
-                'approach': 'combined_fallback'
+                'source': 'Unknown',
+                'total_quarters': len(self.current_financial_data),
+                'approach': 'fallback'
             }
             
             # Reset tab loading states
@@ -283,7 +280,6 @@ class FinancialsManager:
         if not CHARTS_AVAILABLE:
             return
         
-        # Get current tab info
         try:
             current_tab_index = self.notebook.index(self.notebook.select())
             tab_name = self._get_tab_name_from_index(current_tab_index)
@@ -297,7 +293,7 @@ class FinancialsManager:
                     'tab_name': tab_name,
                     'tab_index': current_tab_index,
                     'ticker': self.current_ticker,
-                    'separated_data_available': {
+                    'data_available': {
                         'fcf': self.fcf_data_available,
                         'revenue': self.revenue_data_available
                     }
@@ -308,12 +304,10 @@ class FinancialsManager:
             self._load_current_tab_data()
             
         except tk.TclError:
-            # Handle case where notebook might not be ready
             print("⚠️ Tab change event handling: Notebook not ready")
     
     def on_tab_changed(self, event):
         """Handle tab changed event (from external sources)"""
-        # This can be used by other components to trigger tab changes
         tab_name = event.data.get('tab_name', '')
         print(f"📊 External tab change request: {tab_name}")
         self._load_current_tab_data()
@@ -324,7 +318,7 @@ class FinancialsManager:
         return tab_names[index] if index < len(tab_names) else 'unknown'
     
     def _load_current_tab_data(self):
-        """Load data for currently active tab - LAZY LOADING"""
+        """Load data for currently active tab"""
         if not CHARTS_AVAILABLE or not self.current_ticker:
             return
         
@@ -332,7 +326,7 @@ class FinancialsManager:
             current_tab_index = self.notebook.index(self.notebook.select())
             tab_name = self._get_tab_name_from_index(current_tab_index)
             
-            print(f"🔄 Loading data for {tab_name} tab...")
+            print(f"🔄 Loading EdgarTools data for {tab_name} tab...")
             
             if tab_name == 'revenue' and not self.tab_data_loaded['revenue']:
                 self._load_revenue_tab_data()
@@ -341,31 +335,30 @@ class FinancialsManager:
                 self._load_cashflow_tab_data()
                 
         except tk.TclError:
-            # Handle case where notebook might not be ready
             print("⚠️ Notebook not ready for tab loading")
     
     def _load_revenue_tab_data(self):
-        """Load revenue-specific data into revenue tab"""
-        print(f"\n📈 LOADING REVENUE TAB DATA")
+        """Load revenue data into revenue tab"""
+        print(f"\n📈 LOADING REVENUE TAB DATA (EdgarTools)")
         print("-" * 40)
         
         if not self.revenue_data_available:
-            print(f"❌ No revenue data available from {self.data_source_info.get('revenue_source', 'Unknown')}")
+            print(f"❌ No revenue data available from EdgarTools")
             self._show_revenue_no_data()
             return
         
         try:
-            print(f"✅ Loading {len(self.current_revenue_data)} quarters of revenue data")
-            print(f"📊 Source: {self.data_source_info.get('revenue_source', 'Unknown')}")
+            print(f"✅ Loading {len(self.revenue_data)} quarters of revenue data")
+            print(f"📊 Source: EdgarTools (SEC EDGAR)")
             
-            # Update revenue tab with revenue-specific data
+            # Update revenue tab with EdgarTools data
             self.revenue_tab.update_data(
-                self.current_revenue_data, 
+                self.revenue_data, 
                 self.current_ticker,
                 {
                     **self.data_source_info,
-                    'data_type': 'revenue_only',
-                    'primary_source': self.data_source_info.get('revenue_source', 'Unknown')
+                    'data_type': 'revenue_edgartools',
+                    'primary_source': 'EdgarTools'
                 }
             )
             
@@ -379,35 +372,27 @@ class FinancialsManager:
             self._show_revenue_error(str(e))
     
     def _load_cashflow_tab_data(self):
-        """Load FCF-specific data into cashflow tab"""
-        print(f"\n💰 LOADING CASHFLOW TAB DATA")
+        """Load FCF data into cashflow tab"""
+        print(f"\n💰 LOADING CASHFLOW TAB DATA (EdgarTools)")
         print("-" * 40)
         
         if not self.fcf_data_available:
-            print(f"❌ No FCF data available from {self.data_source_info.get('fcf_source', 'Unknown')}")
+            print(f"❌ No FCF data available from EdgarTools")
             self._show_cashflow_no_data()
             return
         
         try:
-            print(f"✅ Loading {len(self.current_fcf_data)} quarters of FCF data")
-            print(f"📊 Source: {self.data_source_info.get('fcf_source', 'Unknown')}")
+            print(f"✅ Loading {len(self.fcf_data)} quarters of FCF data")
+            print(f"📊 Source: EdgarTools (SEC EDGAR)")
             
-            # Check for recent FCF data
-            recent_fcf = [q for q in self.current_fcf_data if q.date.startswith('2024') or q.date.startswith('2025')]
-            if recent_fcf:
-                print(f"🎉 Including {len(recent_fcf)} recent quarters (2024-2025)")
-                for q in recent_fcf:
-                    fcf_b = q.cash / 1e9
-                    print(f"   📈 {q.date}: ${fcf_b:.2f}B")
-            
-            # Update cashflow tab with FCF-specific data
+            # Update cashflow tab with EdgarTools data
             self.cashflow_tab.update_data(
-                self.current_fcf_data,
+                self.fcf_data,
                 self.current_ticker,
                 {
                     **self.data_source_info,
-                    'data_type': 'fcf_only',
-                    'primary_source': self.data_source_info.get('fcf_source', 'Unknown')
+                    'data_type': 'fcf_edgartools',
+                    'primary_source': 'EdgarTools'
                 }
             )
             
@@ -423,18 +408,17 @@ class FinancialsManager:
     def _show_revenue_no_data(self):
         """Show no data message for revenue tab"""
         if self.revenue_tab:
-            # Clear existing content
             for widget in self.revenue_frame.winfo_children():
                 widget.destroy()
             
             tk.Label(
                 self.revenue_frame,
                 text=f"📈 No Revenue Data Available\n\n" +
-                     f"Source: {self.data_source_info.get('revenue_source', 'SEC EDGAR')}\n\n" +
+                     f"Source: EdgarTools (SEC EDGAR)\n\n" +
                      f"Ticker: {self.current_ticker}\n" +
                      f"• Check ticker symbol\n" +
-                     f"• Company may not report revenue in standard format\n" +
-                     f"• SEC EDGAR may not have recent filings",
+                     f"• Company may not have recent SEC filings\n" +
+                     f"• Revenue data may not be available in EDGAR",
                 font=(UI_CONFIG['font_family'], 12),
                 bg=self.colors['bg'],
                 fg=self.colors['warning'],
@@ -444,19 +428,17 @@ class FinancialsManager:
     def _show_cashflow_no_data(self):
         """Show no data message for cashflow tab"""
         if self.cashflow_tab:
-            # Clear existing content
             for widget in self.cashflow_frame.winfo_children():
                 widget.destroy()
             
             tk.Label(
                 self.cashflow_frame,
                 text=f"💰 No Free Cash Flow Data Available\n\n" +
-                     f"Source: {self.data_source_info.get('fcf_source', 'Polygon.io')}\n\n" +
+                     f"Source: EdgarTools (SEC EDGAR)\n\n" +
                      f"Ticker: {self.current_ticker}\n" +
                      f"• Check ticker symbol\n" +
-                     f"• Polygon.io API may be unavailable\n" +
-                     f"• Company may not report cash flow data\n" +
-                     f"• API key may be invalid",
+                     f"• Company may not have recent SEC filings\n" +
+                     f"• Cash flow data may not be available in EDGAR",
                 font=(UI_CONFIG['font_family'], 12),
                 bg=self.colors['bg'],
                 fg=self.colors['warning'],
@@ -513,10 +495,11 @@ class FinancialsManager:
         """Get current data status for debugging"""
         return {
             'ticker': self.current_ticker,
-            'fcf_data_available': self.fcf_data_available,
-            'revenue_data_available': self.revenue_data_available,
-            'fcf_quarters': len(self.current_fcf_data),
-            'revenue_quarters': len(self.current_revenue_data),
+            'total_quarters': len(self.current_financial_data),
+            'revenue_available': self.revenue_data_available,
+            'fcf_available': self.fcf_data_available,
+            'revenue_quarters': len(getattr(self, 'revenue_data', [])),
+            'fcf_quarters': len(getattr(self, 'fcf_data', [])),
             'tabs_loaded': self.tab_data_loaded.copy(),
             'data_source_info': self.data_source_info.copy(),
             'current_tab': self._get_tab_name_from_index(self.notebook.index(self.notebook.select())) if CHARTS_AVAILABLE else 'none'
@@ -530,22 +513,7 @@ class FinancialsManager:
         """Set the container frame for the financials manager"""
         self.parent_frame = container_frame
         self._setup_ui()
-        print("📊 Separated Financials Manager container updated")
-    
-    def add_chart_tab(self, tab_name: str, chart_component):
-        """Add a new chart tab dynamically (for future expansion)"""
-        if not CHARTS_AVAILABLE or not self.notebook:
-            return None
-        
-        new_frame = tk.Frame(self.notebook, bg=self.colors['bg'])
-        self.notebook.add(new_frame, text=tab_name)
-        
-        # Initialize the chart component with the new frame
-        if hasattr(chart_component, '__call__'):
-            chart_instance = chart_component(new_frame)
-            chart_instance.show_placeholder()
-            return chart_instance
-        return None
+        print("📊 EdgarTools Financials Manager container updated")
     
     def get_current_tab_index(self) -> int:
         """Get currently selected tab index"""
@@ -562,7 +530,6 @@ class FinancialsManager:
             try:
                 if tab_index < self.notebook.index("end"):
                     self.notebook.select(tab_index)
-                    # Trigger data loading
                     self._load_current_tab_data()
             except tk.TclError:
                 pass
@@ -579,7 +546,6 @@ def create_financials_manager(parent_frame: tk.Frame, event_bus: EventBus, **kwa
         return FinancialsManager(parent_frame, event_bus, **kwargs)
     except Exception as e:
         print(f"❌ Error creating FinancialsManager: {e}")
-        # Return basic fallback manager
         return BasicFinancialsManager(parent_frame, event_bus, **kwargs)
 
 
@@ -615,7 +581,7 @@ class BasicFinancialsManager:
         
         tk.Label(
             self.parent_frame,
-            text="📊 Financial Analysis\n\n⚠️ Chart components not available\nPlease create components/charts/ directory with:\n\n• base_chart.py\n• revenue_chart.py\n• cashflow_chart.py\n• __init__.py\n\nThen restart the application.",
+            text="📊 Financial Analysis - EdgarTools\n\n⚠️ Chart components not available\nPlease create components/charts/ directory with:\n\n• base_chart.py\n• revenue_chart.py\n• cashflow_chart.py\n• __init__.py\n\nThen restart the application.",
             font=(UI_CONFIG['font_family'], 12),
             bg=self.colors['bg'],
             fg=self.colors['warning'],
@@ -624,8 +590,9 @@ class BasicFinancialsManager:
     
     def on_data_received(self, event):
         """Handle data in basic mode"""
-        stock_data = event.data['stock_data']
-        print(f"📊 Basic mode: Received data for {stock_data.ticker}")
+        stock_data = event.data.get('stock_data')
+        if stock_data:
+            print(f"📊 Basic mode: Received EdgarTools data for {stock_data.ticker}")
     
     def set_container(self, container_frame: tk.Frame):
         """Set container in basic mode"""
@@ -636,14 +603,15 @@ class BasicFinancialsManager:
         """Get data status in basic mode"""
         return {
             'mode': 'basic_fallback',
-            'charts_available': False
+            'charts_available': False,
+            'data_source': 'EdgarTools'
         }
 
 
 if __name__ == "__main__":
-    # Test the separated financials manager
+    # Test the simplified financials manager
     root = tk.Tk()
-    root.title("Separated Financials Manager Test")
+    root.title("EdgarTools Financials Manager Test")
     root.geometry("1200x800")
     root.configure(bg='#2b2b2b')
     
@@ -653,7 +621,7 @@ if __name__ == "__main__":
     
     try:
         manager = create_financials_manager(root, event_bus)
-        print("✅ Separated financials manager created successfully")
+        print("✅ EdgarTools financials manager created successfully")
     except Exception as e:
         print(f"❌ Failed to create manager: {e}")
         tk.Label(root, text=f"Error: {e}", fg='red').pack(expand=True)

@@ -1,0 +1,9 @@
+{
+  "tickers": [
+    "ADAP",
+    "NVDA"
+  ],
+  "total_tickers": 2,
+  "last_global_update": "2025-07-11T21:38:52.514492",
+  "cache_format_version": "3.0_revenue_concepts"
+}

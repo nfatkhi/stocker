@@ -1,4 +1,4 @@
-# components/charts/base_chart.py - Enhanced with trackpad scrolling support
+# components/charts/base_chart.py - Fixed duplicate methods and enhanced scrolling
 
 import tkinter as tk
 from matplotlib.figure import Figure
@@ -137,10 +137,7 @@ class BaseChart(ABC):
         return canvas
     
     def setup_enhanced_scrolling(self, canvas: tk.Canvas):
-        """
-        Enhanced scrolling setup for both mouse wheel and trackpad
-        This method should be called by any chart that implements scrolling
-        """
+        """Enhanced scrolling setup for both mouse wheel and trackpad"""
         
         def enhanced_scroll_handler(event):
             """Handle both mouse wheel and trackpad scrolling with adaptive sensitivity"""
@@ -199,10 +196,7 @@ class BaseChart(ABC):
         canvas.bind('<FocusOut>', lambda e: unbind_scroll_events())
     
     def create_scrollable_container(self, parent_frame: tk.Frame) -> tuple:
-        """
-        Create a scrollable container with enhanced scrolling support
-        Returns: (canvas, scrollbar, content_frame)
-        """
+        """Create a scrollable container with enhanced scrolling support"""
         # Create container frame
         container_frame = tk.Frame(parent_frame, bg=self.colors['bg'])
         container_frame.pack(fill='both', expand=True)
@@ -240,9 +234,7 @@ class BaseChart(ABC):
         return canvas, scrollbar, content_frame
     
     def _bind_scrolling_to_all_widgets(self, container_frame: tk.Frame, canvas: tk.Canvas):
-        """
-        Bind scrolling to all widgets in the container so scrolling works everywhere
-        """
+        """Bind scrolling to all widgets in the container so scrolling works everywhere"""
         def scroll_handler(event):
             """Handle scroll events and forward to canvas"""
             if hasattr(event, 'delta'):
@@ -314,105 +306,6 @@ class BaseChart(ABC):
                 bg=self.colors['frame'],
                 fg=color
             ).pack(pady=(0, 10))
-    
-    def setup_enhanced_scrolling(self, canvas: tk.Canvas):
-        """
-        Enhanced scrolling setup for both mouse wheel and trackpad
-        This method should be called by any chart that implements scrolling
-        """
-        
-        def enhanced_scroll_handler(event):
-            """Handle both mouse wheel and trackpad scrolling with adaptive sensitivity"""
-            if hasattr(event, 'delta'):
-                # Windows/Mac - detect scroll device by delta magnitude
-                if abs(event.delta) < 50:
-                    # Likely trackpad - higher sensitivity for small deltas
-                    delta = -1 * (event.delta / 15)  # More responsive for trackpad
-                elif abs(event.delta) < 120:
-                    # Medium sensitivity for moderate deltas
-                    delta = -1 * (event.delta / 40)
-                else:
-                    # Traditional mouse wheel - standard sensitivity
-                    delta = -1 * (event.delta / 120)
-            else:
-                # Linux scroll wheel events
-                delta = -1 if event.num == 4 else 1
-            
-            # Apply scrolling with smooth increments
-            canvas.yview_scroll(int(delta), "units")
-        
-        def bind_scroll_events():
-            """Bind all scroll events when mouse enters canvas area"""
-            # Primary scroll binding for Windows/Mac
-            canvas.bind_all("<MouseWheel>", enhanced_scroll_handler)
-            
-            # Linux scroll bindings
-            canvas.bind_all("<Button-4>", enhanced_scroll_handler)  # Scroll up
-            canvas.bind_all("<Button-5>", enhanced_scroll_handler)  # Scroll down
-            
-            # Additional Mac trackpad support
-            try:
-                canvas.bind_all("<Shift-MouseWheel>", enhanced_scroll_handler)
-            except tk.TclError:
-                pass  # Not supported on this platform
-        
-        def unbind_scroll_events():
-            """Unbind scroll events when mouse leaves canvas area"""
-            try:
-                canvas.unbind_all("<MouseWheel>")
-                canvas.unbind_all("<Button-4>")
-                canvas.unbind_all("<Button-5>")
-                canvas.unbind_all("<Shift-MouseWheel>")
-            except tk.TclError:
-                pass  # Some events might not be bound
-        
-        # Bind enter/leave events to manage scroll binding
-        canvas.bind('<Enter>', lambda e: bind_scroll_events())
-        canvas.bind('<Leave>', lambda e: unbind_scroll_events())
-        
-        # Also bind to focus events for better behavior
-        canvas.bind('<FocusIn>', lambda e: bind_scroll_events())
-        canvas.bind('<FocusOut>', lambda e: unbind_scroll_events())
-    
-    def create_scrollable_container(self, parent_frame: tk.Frame) -> tuple:
-        """
-        Create a scrollable container with enhanced scrolling support
-        Returns: (canvas, scrollbar, content_frame)
-        """
-        # Create container frame
-        container_frame = tk.Frame(parent_frame, bg=self.colors['bg'])
-        container_frame.pack(fill='both', expand=True)
-        
-        # Create canvas and scrollbar
-        canvas = tk.Canvas(container_frame, bg=self.colors['bg'])
-        scrollbar = tk.Scrollbar(container_frame, orient="vertical", command=canvas.yview)
-        
-        # Create content frame that will hold the actual content
-        content_frame = tk.Frame(canvas, bg=self.colors['bg'])
-        
-        # Configure canvas scrolling
-        canvas_window = canvas.create_window((0, 0), window=content_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-        
-        def update_scroll_region():
-            """Update canvas scroll region when content changes"""
-            canvas.configure(scrollregion=canvas.bbox("all"))
-            # Update content frame width to match canvas width
-            if canvas.winfo_width() > 1:
-                canvas.itemconfig(canvas_window, width=canvas.winfo_width())
-        
-        # Bind events to update scroll region
-        content_frame.bind("<Configure>", lambda e: canvas.after_idle(update_scroll_region))
-        canvas.bind("<Configure>", lambda e: canvas.after_idle(update_scroll_region))
-        
-        # Setup enhanced scrolling
-        self.setup_enhanced_scrolling(canvas)
-        
-        # Pack canvas and scrollbar
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-        
-        return canvas, scrollbar, content_frame
     
     @abstractmethod
     def create_chart(self, financial_data: List[Any]) -> bool:

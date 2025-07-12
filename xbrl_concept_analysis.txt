@@ -1,0 +1,167 @@
+🔍 XBRL CONCEPT ANALYSIS REPORT
+==================================================
+
+📊 COMPANIES ANALYZED:
+   AAPL: 220 unique concepts, 666 total facts
+   MSFT: 354 unique concepts, 1546 total facts
+
+🤝 COMMON CONCEPTS ACROSS ALL COMPANIES: 121
+
+📋 REVENUE & INCOME (26 concepts):
+   • us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax
+   • us-gaap:AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedLossBeforeTax
+   • us-gaap:AvailableForSaleDebtSecuritiesAmortizedCostBasis
+   • us-gaap:ComprehensiveIncomeNetOfTax
+   • us-gaap:CostOfGoodsAndServicesSold
+   • us-gaap:EarningsPerShareBasic
+   • us-gaap:EarningsPerShareDiluted
+   • us-gaap:GrossProfit
+   • us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest
+   • us-gaap:IncomeTaxExpenseBenefit
+   • us-gaap:InterestExpense
+   • us-gaap:NetIncomeLoss
+   • us-gaap:NonoperatingIncomeExpense
+   • us-gaap:OperatingIncomeLoss
+   • us-gaap:OtherComprehensiveIncomeLossAvailableForSaleSecuritiesAdjustmentNetOfTax
+   • us-gaap:OtherComprehensiveIncomeLossForeignCurrencyTransactionAndTranslationAdjustmentNetOfTax
+   • us-gaap:OtherComprehensiveIncomeLossNetOfTaxPortionAttributableToParent
+   • us-gaap:OtherNonoperatingIncomeExpense
+   • us-gaap:ReconciliationOfOperatingProfitLossFromSegmentsToConsolidatedTextBlock
+   • us-gaap:ResearchAndDevelopmentExpense
+   • us-gaap:RetainedEarningsAccumulatedDeficit
+   • us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax
+   • us-gaap:RevenueFromContractWithCustomerTextBlock
+   • us-gaap:RevenueRemainingPerformanceObligationExpectedTimingOfSatisfactionPeriod1
+   • us-gaap:RevenueRemainingPerformanceObligationPercentage
+   • us-gaap:ScheduleOfEarningsPerShareBasicAndDilutedTableTextBlock
+
+📋 BALANCE SHEET - ASSETS (18 concepts):
+   • us-gaap:AccountsReceivableNetCurrent
+   • us-gaap:AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment
+   • us-gaap:Assets
+   • us-gaap:Cash
+   • us-gaap:CashAndCashEquivalentsAtCarryingValue
+   • us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents
+   • us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect
+   • us-gaap:IncreaseDecreaseInAccountsReceivable
+   • us-gaap:InventoryFinishedGoodsNetOfReserves
+   • us-gaap:InventoryNet
+   • us-gaap:InvestmentsClassifiedByContractualMaturityDateTableTextBlock
+   • us-gaap:NetCashProvidedByUsedInFinancingActivities
+   • us-gaap:NetCashProvidedByUsedInInvestingActivities
+   • us-gaap:NetCashProvidedByUsedInOperatingActivities
+   • us-gaap:PaymentsToAcquirePropertyPlantAndEquipment
+   • us-gaap:PropertyPlantAndEquipmentGross
+   • us-gaap:PropertyPlantAndEquipmentNet
+   • us-gaap:ScheduleOfInventoryCurrentTableTextBlock
+
+📋 BALANCE SHEET - LIABILITIES (13 concepts):
+   • us-gaap:AccountsPayableCurrent
+   • us-gaap:AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedGainBeforeTax
+   • us-gaap:AvailableForSaleSecuritiesDebtMaturitiesRollingAfterYearTenFairValue
+   • us-gaap:AvailableForSaleSecuritiesDebtMaturitiesRollingYearSixThroughTenFairValue
+   • us-gaap:AvailableForSaleSecuritiesDebtMaturitiesRollingYearTwoThroughFiveFairValue
+   • us-gaap:AvailableForSaleSecuritiesDebtSecurities
+   • us-gaap:DebtDisclosureTextBlock
+   • us-gaap:IncreaseDecreaseInAccountsPayable
+   • us-gaap:Liabilities
+   • us-gaap:LongTermDebt
+   • us-gaap:LongTermDebtCurrent
+   • us-gaap:LongTermDebtFairValue
+   • us-gaap:LongTermDebtNoncurrent
+
+📋 BALANCE SHEET - EQUITY (5 concepts):
+   • us-gaap:AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue
+   • us-gaap:CommonStocksIncludingAdditionalPaidInCapital
+   • us-gaap:LiabilitiesAndStockholdersEquity
+   • us-gaap:StockholdersEquity
+   • us-gaap:StockholdersEquityNoteDisclosureTextBlock
+
+📋 SHARE INFORMATION (4 concepts):
+   • dei:EntityCommonStockSharesOutstanding
+   • us-gaap:CommonStockSharesOutstanding
+   • us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding
+   • us-gaap:WeightedAverageNumberOfSharesOutstandingBasic
+
+📋 OTHER (55 concepts):
+   • dei:AmendmentFlag
+   • dei:CityAreaCode
+   • dei:CurrentFiscalYearEndDate
+   • dei:DocumentFiscalPeriodFocus
+   • dei:DocumentFiscalYearFocus
+   • dei:DocumentPeriodEndDate
+   • dei:DocumentQuarterlyReport
+   • dei:DocumentTransitionReport
+   • dei:DocumentType
+   • dei:EntityAddressAddressLine1
+   • dei:EntityAddressCityOrTown
+   • dei:EntityAddressPostalZipCode
+   • dei:EntityAddressStateOrProvince
+   • dei:EntityCentralIndexKey
+   • dei:EntityCurrentReportingStatus
+   • dei:EntityEmergingGrowthCompany
+   • dei:EntityFileNumber
+   • dei:EntityFilerCategory
+   • dei:EntityIncorporationStateCountryCode
+   • dei:EntityInteractiveDataCurrent
+   • dei:EntityRegistrantName
+   • dei:EntityShellCompany
+   • dei:EntitySmallBusiness
+   • dei:EntityTaxIdentificationNumber
+   • dei:LocalPhoneNumber
+   • dei:Security12bTitle
+   • dei:SecurityExchangeName
+   • dei:TradingSymbol
+   • us-gaap:AssetsCurrent
+   • us-gaap:BasisOfAccountingPolicyPolicyTextBlock
+   • us-gaap:CommitmentsAndContingencies
+   • us-gaap:CommonStockDividendsPerShareDeclared
+   • us-gaap:CommonStockSharesAuthorized
+   • us-gaap:ContractWithCustomerLiability
+   • us-gaap:ContractWithCustomerLiabilityCurrent
+   • us-gaap:DerivativeAssetFairValueGrossAssetIncludingNotSubjectToMasterNettingArrangement
+   • us-gaap:DerivativeLiabilityFairValueGrossLiabilityIncludingNotSubjectToMasterNettingArrangement
+   • us-gaap:DerivativeNotionalAmount
+   • us-gaap:IncreaseDecreaseInContractWithCustomerLiability
+   • us-gaap:IncreaseDecreaseInInventories
+   • us-gaap:LiabilitiesCurrent
+   • us-gaap:OtherAssetsCurrent
+   • us-gaap:OtherAssetsNoncurrent
+   • us-gaap:OtherLiabilitiesCurrent
+   • us-gaap:OtherLiabilitiesNoncurrent
+   • us-gaap:PaymentsForProceedsFromOtherInvestingActivities
+   • us-gaap:PaymentsForRepurchaseOfCommonStock
+   • us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation
+   • us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities
+   • us-gaap:ProceedsFromPaymentsForOtherFinancingActivities
+   • us-gaap:ScheduleOfDerivativeInstrumentsInStatementOfFinancialPositionFairValueTextBlock
+   • us-gaap:ScheduleOfNotionalAmountsOfOutstandingDerivativePositionsTableTextBlock
+   • us-gaap:SegmentReportingDisclosureTextBlock
+   • us-gaap:ShareBasedCompensation
+   • us-gaap:UnrecordedUnconditionalPurchaseObligationBalanceSheetAmount
+
+🎯 KEY FINANCIAL CONCEPTS FOR EXTRACTION:
+   revenue: us-gaap:AvailableForSaleSecuritiesDebtSecurities
+      AAPL: $22.6B (['instant'])
+      MSFT: $6.4B (['instant'])
+   net_income: us-gaap:NetIncomeLoss
+      AAPL: $30.0B (['duration'])
+      MSFT: $16.4B (['duration'])
+   total_assets: us-gaap:Assets
+      AAPL: $346.7B (['instant'])
+      MSFT: $364.6B (['instant'])
+   total_liabilities: us-gaap:Liabilities
+      AAPL: $290.0B (['instant'])
+      MSFT: $181.4B (['instant'])
+   stockholders_equity: us-gaap:StockholdersEquity
+      AAPL: $50.7B (['instant'])
+      MSFT: $166.5B (['instant'])
+   cash_and_equivalents: us-gaap:CashAndCashEquivalentsAtCarryingValue
+      AAPL: $17.9B (['instant'])
+      MSFT: $3.3B (['instant'])
+   earnings_per_share: us-gaap:EarningsPerShareBasic
+      AAPL: 1.89 (['duration'])
+      MSFT: 0.1 (['duration'])
+   shares_outstanding: us-gaap:CommonStockSharesOutstanding
+      AAPL: $15.8B (['instant'])
+      MSFT: $7.4B (['instant'])

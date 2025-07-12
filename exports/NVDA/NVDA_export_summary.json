@@ -1,0 +1,65 @@
+{
+  "ticker": "NVDA",
+  "company_name": "NVIDIA CORP",
+  "export_timestamp": "2025-07-08T20:47:31.191614",
+  "quarters_exported": 8,
+  "data_source": "SEC EDGAR via EdgarTools",
+  "filings_info": [
+    {
+      "quarter": "Q1",
+      "year": 2025,
+      "filing_date": "2025-05-28",
+      "facts_count": 838,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q4",
+      "year": 2024,
+      "filing_date": "2025-02-26",
+      "facts_count": 1417,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q3",
+      "year": 2024,
+      "filing_date": "2024-11-20",
+      "facts_count": 1096,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q2",
+      "year": 2024,
+      "filing_date": "2024-08-28",
+      "facts_count": 1095,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q1",
+      "year": 2024,
+      "filing_date": "2024-05-29",
+      "facts_count": 869,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q4",
+      "year": 2023,
+      "filing_date": "2024-02-21",
+      "facts_count": 1387,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q3",
+      "year": 2023,
+      "filing_date": "2023-11-21",
+      "facts_count": 1070,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q2",
+      "year": 2023,
+      "filing_date": "2023-08-28",
+      "facts_count": 1066,
+      "extraction_success": true
+    }
+  ]
+}

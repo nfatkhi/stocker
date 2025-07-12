@@ -1,0 +1,65 @@
+{
+  "ticker": "COMM",
+  "company_name": "CommScope Holding Company, Inc.",
+  "export_timestamp": "2025-07-08T16:35:37.704703",
+  "quarters_exported": 8,
+  "data_source": "SEC EDGAR via EdgarTools",
+  "filings_info": [
+    {
+      "quarter": "Q1",
+      "year": 2025,
+      "filing_date": "2025-05-01",
+      "facts_count": 1023,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q4",
+      "year": 2024,
+      "filing_date": "2025-02-26",
+      "facts_count": 2665,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q3",
+      "year": 2024,
+      "filing_date": "2024-11-07",
+      "facts_count": 1545,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q2",
+      "year": 2024,
+      "filing_date": "2024-08-08",
+      "facts_count": 1330,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q1",
+      "year": 2024,
+      "filing_date": "2024-05-09",
+      "facts_count": 895,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q4",
+      "year": 2023,
+      "filing_date": "2024-02-29",
+      "facts_count": 2087,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q3",
+      "year": 2023,
+      "filing_date": "2023-11-09",
+      "facts_count": 1300,
+      "extraction_success": true
+    },
+    {
+      "quarter": "Q2",
+      "year": 2023,
+      "filing_date": "2023-08-03",
+      "facts_count": 1266,
+      "extraction_success": true
+    }
+  ]
+}
